@@ -1,43 +1,48 @@
-import React, { useState } from 'react';
-import { mockProducts } from '@/data/mock-data';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { StockEntry } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { Package } from 'lucide-react';
+import type { Tables } from '@/integrations/supabase/types';
 
 const StockEntryPage: React.FC = () => {
   const { user } = useAuth();
+  const [products, setProducts] = useState<Tables<'products'>[]>([]);
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [supplier, setSupplier] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    supabase.from('products').select('*').eq('active', true).then(({ data }) => {
+      if (data) setProducts(data);
+    });
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productId || !quantity || !supplier) {
       toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
       return;
     }
 
-    const product = mockProducts.find(p => p.id === productId);
-    const entry: StockEntry = {
-      id: crypto.randomUUID(),
-      productId,
-      productName: product?.name || '',
+    const product = products.find(p => p.id === productId);
+    const { error } = await supabase.from('stock_entries').insert({
+      product_id: productId,
+      product_name: product?.name || '',
       quantity: parseInt(quantity),
       supplier,
-      date: new Date().toISOString(),
-      status: 'pending',
-      userId: user?.id || '',
-    };
+      user_id: user!.id,
+    });
 
-    const entries = JSON.parse(localStorage.getItem('gv_stock_entries') || '[]');
-    entries.push(entry);
-    localStorage.setItem('gv_stock_entries', JSON.stringify(entries));
+    if (error) {
+      toast({ title: 'Erreur', description: 'Impossible d\'enregistrer.', variant: 'destructive' });
+      return;
+    }
 
     setProductId('');
     setQuantity('');
@@ -58,7 +63,7 @@ const StockEntryPage: React.FC = () => {
               <Select value={productId} onValueChange={setProductId}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner un produit" /></SelectTrigger>
                 <SelectContent>
-                  {mockProducts.map(p => (
+                  {products.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -72,9 +77,6 @@ const StockEntryPage: React.FC = () => {
               <Label>Fournisseur</Label>
               <Input value={supplier} onChange={e => setSupplier(e.target.value)} placeholder="Nom du fournisseur" />
             </div>
-            <p className="text-xs text-muted-foreground">
-              📎 La pièce jointe (facture fournisseur) sera disponible avec le backend.
-            </p>
             <Button type="submit" className="w-full">Enregistrer le stock</Button>
           </form>
         </CardContent>

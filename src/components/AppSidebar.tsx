@@ -7,13 +7,15 @@ import {
   XCircle, CheckSquare, BarChart3, Settings, Users,
   Tag, UtensilsCrossed, LogOut, CreditCard, UserCircle, DollarSign
 } from 'lucide-react';
-import { UserRole } from '@/types';
+import type { Database } from '@/integrations/supabase/types';
+
+type AppRole = Database['public']['Enums']['app_role'];
 
 interface NavItem {
   label: string;
   path: string;
   icon: React.ReactNode;
-  roles: UserRole[];
+  roles: AppRole[];
 }
 
 const navItems: NavItem[] = [
@@ -47,7 +49,7 @@ const AppSidebar: React.FC = () => {
     navigate('/login');
   };
 
-  const roleLabel: Record<UserRole, string> = {
+  const roleLabel: Record<AppRole, string> = {
     caissiere: 'Caissière',
     manager: 'Manager',
     admin: 'Administrateur',

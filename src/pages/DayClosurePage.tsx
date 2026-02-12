@@ -1,35 +1,42 @@
-import React, { useMemo } from 'react';
-import { Sale } from '@/types';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { CalendarCheck, Printer } from 'lucide-react';
+import type { Tables } from '@/integrations/supabase/types';
 
 const DayClosurePage: React.FC = () => {
   const { user } = useAuth();
+  const [todaySales, setTodaySales] = useState<Tables<'sales'>[]>([]);
 
-  const todaySales = useMemo(() => {
-    const all: Sale[] = JSON.parse(localStorage.getItem('gv_sales') || '[]');
-    const today = new Date().toDateString();
-    return all.filter(s => new Date(s.date).toDateString() === today && s.status === 'completed');
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    supabase
+      .from('sales')
+      .select('*')
+      .gte('date', today)
+      .eq('status', 'completed')
+      .order('date', { ascending: true })
+      .then(({ data }) => { if (data) setTodaySales(data); });
   }, []);
 
-  const totalGeneral = todaySales.reduce((sum, s) => sum + s.totalTTC, 0);
+  const totalGeneral = todaySales.reduce((sum, s) => sum + s.total_ttc, 0);
   const formatCurrency = (v: number) => `${v.toFixed(0)} FCFA`;
 
-  const handleClose = () => {
-    const closure = {
-      id: crypto.randomUUID(),
-      date: new Date().toISOString(),
-      sales: todaySales.map(s => ({ invoiceNumber: s.invoiceNumber, totalTTC: s.totalTTC })),
-      totalGeneral,
-      userId: user?.id || '',
-    };
-    const closures = JSON.parse(localStorage.getItem('gv_closures') || '[]');
-    closures.push(closure);
-    localStorage.setItem('gv_closures', JSON.stringify(closures));
+  const handleClose = async () => {
+    const { error } = await supabase.from('day_closures').insert({
+      date: new Date().toISOString().split('T')[0],
+      total_general: totalGeneral,
+      user_id: user!.id,
+    });
+
+    if (error) {
+      toast({ title: 'Erreur', description: 'Impossible de clôturer.', variant: 'destructive' });
+      return;
+    }
     toast({ title: 'Journée clôturée', description: `Total: ${formatCurrency(totalGeneral)}` });
   };
 
@@ -53,8 +60,8 @@ const DayClosurePage: React.FC = () => {
               )}
               {todaySales.map(s => (
                 <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.invoiceNumber}</TableCell>
-                  <TableCell className="text-right font-bold">{formatCurrency(s.totalTTC)}</TableCell>
+                  <TableCell className="font-medium">{s.invoice_number}</TableCell>
+                  <TableCell className="text-right font-bold">{formatCurrency(s.total_ttc)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

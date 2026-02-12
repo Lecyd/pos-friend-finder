@@ -54,13 +54,6 @@ const LoginPage: React.FC = () => {
               {loading ? 'Connexion...' : 'Se connecter'}
             </Button>
           </form>
-          <div className="mt-6 text-xs text-muted-foreground space-y-1">
-            <p className="font-medium">Comptes de démonstration :</p>
-            <p>Caissière: caisse@restaurant.com</p>
-            <p>Manager: manager@restaurant.com</p>
-            <p>Admin: admin@restaurant.com</p>
-            <p className="italic">(n'importe quel mot de passe)</p>
-          </div>
         </CardContent>
       </Card>
     </div>

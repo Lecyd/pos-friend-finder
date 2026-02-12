@@ -3,33 +3,31 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { UserCircle } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, updatePassword } = useAuth();
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState(user?.address || '');
-  const [photoUrl, setPhotoUrl] = useState(user?.photoUrl || '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setPhotoUrl(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (password && password !== confirmPassword) {
       toast({ title: 'Erreur', description: 'Les mots de passe ne correspondent pas.', variant: 'destructive' });
       return;
     }
-    updateProfile({ name, phone, address, photoUrl });
+    await updateProfile({ name, phone, address });
+    if (password) {
+      const success = await updatePassword(password);
+      if (!success) {
+        toast({ title: 'Erreur', description: 'Impossible de changer le mot de passe.', variant: 'destructive' });
+        return;
+      }
+    }
     toast({ title: 'Profil mis à jour' });
     setPassword('');
     setConfirmPassword('');
@@ -44,20 +42,6 @@ const ProfilePage: React.FC = () => {
       </h2>
       <Card className="border-border/50">
         <CardContent className="pt-6 space-y-4">
-          <div className="flex items-center gap-4 mb-4">
-            {photoUrl ? (
-              <img src={photoUrl} alt="Photo" className="h-16 w-16 rounded-full object-cover" />
-            ) : (
-              <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-                <UserCircle className="h-8 w-8 text-muted-foreground" />
-              </div>
-            )}
-            <div>
-              <Label>Photo de profil</Label>
-              <Input type="file" accept="image/*" onChange={handlePhotoUpload} className="mt-1" />
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label>Nom</Label>
             <Input value={name} onChange={e => setName(e.target.value)} />
@@ -68,7 +52,7 @@ const ProfilePage: React.FC = () => {
           </div>
           <div className="space-y-2">
             <Label>Téléphone</Label>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+33 ..." />
+            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+237 ..." />
           </div>
           <div className="space-y-2">
             <Label>Adresse</Label>

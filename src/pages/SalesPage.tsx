@@ -1,7 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { mockProducts, mockCategories } from '@/data/mock-data';
-import { CartItem, Product, Sale, SaleLine, CreditNote } from '@/types';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +8,16 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, CreditCard, XCircle } from 'lucide-react';
+import type { Tables } from '@/integrations/supabase/types';
+
+type Product = Tables<'products'>;
+type Category = Tables<'categories'>;
+type CreditNote = Tables<'credit_notes'>;
+
+interface CartItem {
+  product: Product;
+  quantity: number;
+}
 
 const SalesPage: React.FC = () => {
   const { user } = useAuth();
@@ -17,24 +26,39 @@ const SalesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [clientId, setClientId] = useState('');
   const [amountReceived, setAmountReceived] = useState('');
-  const [lastSale, setLastSale] = useState<Sale | null>(null);
+  const [lastSale, setLastSale] = useState<any>(null);
   const [selectedCreditNoteId, setSelectedCreditNoteId] = useState<string>('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
+  const [siteSettings, setSiteSettings] = useState<Tables<'site_settings'> | null>(null);
 
-  const availableCreditNotes: CreditNote[] = useMemo(() => {
-    const all: CreditNote[] = JSON.parse(localStorage.getItem('gv_credit_notes') || '[]');
-    return all.filter(cn => !cn.used);
-  }, [cart]);
+  useEffect(() => {
+    const fetchData = async () => {
+      const [prodRes, catRes, cnRes, settingsRes] = await Promise.all([
+        supabase.from('products').select('*').eq('active', true),
+        supabase.from('categories').select('*'),
+        supabase.from('credit_notes').select('*').eq('used', false),
+        supabase.from('site_settings').select('*').limit(1).single(),
+      ]);
+      if (prodRes.data) setProducts(prodRes.data);
+      if (catRes.data) setCategories(catRes.data);
+      if (cnRes.data) setCreditNotes(cnRes.data);
+      if (settingsRes.data) setSiteSettings(settingsRes.data);
+    };
+    fetchData();
+  }, []);
 
-  const selectedCreditNote = availableCreditNotes.find(cn => cn.id === selectedCreditNoteId);
+  const selectedCreditNote = creditNotes.find(cn => cn.id === selectedCreditNoteId);
   const creditNoteAmount = selectedCreditNote?.amount || 0;
 
   const filteredProducts = useMemo(() => {
-    return mockProducts.filter(p => {
+    return products.filter(p => {
       const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchCat = !selectedCategory || p.categoryId === selectedCategory;
-      return matchSearch && matchCat && p.active;
+      const matchCat = !selectedCategory || p.category_id === selectedCategory;
+      return matchSearch && matchCat;
     });
-  }, [searchTerm, selectedCategory]);
+  }, [products, searchTerm, selectedCategory]);
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -69,9 +93,9 @@ const SalesPage: React.FC = () => {
   };
 
   const cartTotals = useMemo(() => {
-    const totalHT = cart.reduce((sum, c) => sum + c.product.priceHT * c.quantity, 0);
+    const totalHT = cart.reduce((sum, c) => sum + c.product.price_ht * c.quantity, 0);
     const totalTTC = cart.reduce((sum, c) => {
-      const ttc = c.product.priceHT * (1 + c.product.tvaRate / 100);
+      const ttc = c.product.price_ht * (1 + c.product.tva_rate / 100);
       return sum + ttc * c.quantity;
     }, 0);
     return { totalHT, totalTTC };
@@ -84,7 +108,7 @@ const SalesPage: React.FC = () => {
     return Math.max(0, received - amountDue);
   }, [amountReceived, amountDue]);
 
-  const validateSale = () => {
+  const validateSale = async () => {
     if (cart.length === 0) {
       toast({ title: 'Erreur', description: 'Le panier est vide.', variant: 'destructive' });
       return;
@@ -95,52 +119,61 @@ const SalesPage: React.FC = () => {
       return;
     }
 
-    const lines: SaleLine[] = cart.map(c => {
-      const priceTTC = c.product.priceHT * (1 + c.product.tvaRate / 100);
+    const invoiceNumber = `FAC-${Date.now().toString(36).toUpperCase()}`;
+
+    // Insert sale
+    const { data: sale, error: saleError } = await supabase
+      .from('sales')
+      .insert({
+        invoice_number: invoiceNumber,
+        client_id: clientId || null,
+        total_ht: cartTotals.totalHT,
+        total_ttc: cartTotals.totalTTC,
+        amount_received: received,
+        amount_returned: amountReturned,
+        credit_note_id: selectedCreditNoteId || null,
+        user_id: user!.id,
+      })
+      .select()
+      .single();
+
+    if (saleError || !sale) {
+      toast({ title: 'Erreur', description: 'Impossible de créer la vente.', variant: 'destructive' });
+      return;
+    }
+
+    // Insert sale lines
+    const lines = cart.map(c => {
+      const priceTTC = c.product.price_ht * (1 + c.product.tva_rate / 100);
       return {
-        productId: c.product.id,
-        productName: c.product.name,
+        sale_id: sale.id,
+        product_id: c.product.id,
+        product_name: c.product.name,
         quantity: c.quantity,
-        priceHT: c.product.priceHT,
-        tvaRate: c.product.tvaRate,
-        priceTTC,
-        totalTTC: priceTTC * c.quantity,
+        price_ht: c.product.price_ht,
+        tva_rate: c.product.tva_rate,
+        price_ttc: priceTTC,
+        total_ttc: priceTTC * c.quantity,
       };
     });
 
-    const sale: Sale = {
-      id: crypto.randomUUID(),
-      invoiceNumber: `FAC-${Date.now().toString(36).toUpperCase()}`,
-      date: new Date().toISOString(),
-      clientId: clientId || undefined,
-      lines,
-      totalHT: cartTotals.totalHT,
-      totalTTC: cartTotals.totalTTC,
-      amountReceived: received,
-      amountReturned,
-      creditNoteId: selectedCreditNoteId || undefined,
-      status: 'completed',
-      userId: user?.id || '',
-    };
+    await supabase.from('sale_lines').insert(lines);
 
-    const sales = JSON.parse(localStorage.getItem('gv_sales') || '[]');
-    sales.push(sale);
-    localStorage.setItem('gv_sales', JSON.stringify(sales));
-
+    // Mark credit note as used
     if (selectedCreditNoteId) {
-      const allNotes: CreditNote[] = JSON.parse(localStorage.getItem('gv_credit_notes') || '[]');
-      const updated = allNotes.map(cn =>
-        cn.id === selectedCreditNoteId ? { ...cn, used: true, usedInSaleId: sale.id } : cn
-      );
-      localStorage.setItem('gv_credit_notes', JSON.stringify(updated));
+      await supabase
+        .from('credit_notes')
+        .update({ used: true, used_in_sale_id: sale.id })
+        .eq('id', selectedCreditNoteId);
+      setCreditNotes(prev => prev.filter(cn => cn.id !== selectedCreditNoteId));
     }
 
-    setLastSale(sale);
+    setLastSale({ ...sale, lines });
     setCart([]);
     setAmountReceived('');
     setClientId('');
     setSelectedCreditNoteId('');
-    toast({ title: 'Vente validée !', description: `Facture ${sale.invoiceNumber} créée.` });
+    toast({ title: 'Vente validée !', description: `Facture ${invoiceNumber} créée.` });
   };
 
   const printReceipt = () => {
@@ -152,37 +185,28 @@ const SalesPage: React.FC = () => {
 
   return (
     <div className="flex gap-6 h-[calc(100vh-3rem)]">
-      {/* Left: Product Selection */}
       <div className="flex-1 flex flex-col min-w-0">
         <h2 className="text-xl font-bold mb-4">Point de Vente</h2>
-
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher un produit..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+          <Input placeholder="Rechercher un produit..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
         </div>
-
         <div className="flex flex-wrap gap-2 mb-4">
           <Badge variant={selectedCategory === null ? 'default' : 'outline'} className="cursor-pointer" onClick={() => setSelectedCategory(null)}>Tous</Badge>
-          {mockCategories.map(cat => (
+          {categories.map(cat => (
             <Badge key={cat.id} variant={selectedCategory === cat.id ? 'default' : 'outline'} className="cursor-pointer" onClick={() => setSelectedCategory(cat.id)}>{cat.name}</Badge>
           ))}
         </div>
-
         <div className="flex-1 overflow-y-auto grid grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredProducts.map(product => {
-            const priceTTC = product.priceHT * (1 + product.tvaRate / 100);
+            const priceTTC = product.price_ht * (1 + product.tva_rate / 100);
             return (
               <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow border-border/50" onClick={() => addToCart(product)}>
                 <CardContent className="p-4">
-                  {product.imageUrl && <img src={product.imageUrl} alt={product.name} className="w-full h-20 object-cover rounded mb-2" />}
+                  {product.image_url && <img src={product.image_url} alt={product.name} className="w-full h-20 object-cover rounded mb-2" />}
                   <p className="font-medium text-sm truncate">{product.name}</p>
                   <p className="text-lg font-bold text-primary mt-1">{formatCurrency(priceTTC)}</p>
-                  <p className="text-xs text-muted-foreground">HT: {formatCurrency(product.priceHT)}</p>
+                  <p className="text-xs text-muted-foreground">HT: {formatCurrency(product.price_ht)}</p>
                 </CardContent>
               </Card>
             );
@@ -190,18 +214,15 @@ const SalesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Right: Cart */}
       <Card className="w-96 flex flex-col no-print border-border/50">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <ShoppingCart className="h-5 w-5" />
-              Panier ({cart.length})
+              <ShoppingCart className="h-5 w-5" /> Panier ({cart.length})
             </CardTitle>
             {cart.length > 0 && (
               <Button variant="destructive" size="sm" onClick={clearCart}>
-                <XCircle className="h-4 w-4 mr-1" />
-                Vider
+                <XCircle className="h-4 w-4 mr-1" /> Vider
               </Button>
             )}
           </div>
@@ -210,7 +231,7 @@ const SalesPage: React.FC = () => {
           <div className="flex-1 overflow-y-auto space-y-2 mb-4">
             {cart.length === 0 && <p className="text-center text-muted-foreground py-8 text-sm">Panier vide</p>}
             {cart.map(item => {
-              const priceTTC = item.product.priceHT * (1 + item.product.tvaRate / 100);
+              const priceTTC = item.product.price_ht * (1 + item.product.tva_rate / 100);
               return (
                 <div key={item.product.id} className="flex items-center gap-2 rounded-lg bg-muted/50 p-2">
                   <div className="flex-1 min-w-0">
@@ -239,18 +260,16 @@ const SalesPage: React.FC = () => {
               <span className="text-primary">{formatCurrency(cartTotals.totalTTC)}</span>
             </div>
 
-            {availableCreditNotes.length > 0 && (
+            {creditNotes.length > 0 && (
               <div className="space-y-1">
                 <label className="text-xs font-medium flex items-center gap-1"><CreditCard className="h-3 w-3" /> Ticket Avoir</label>
                 <Select value={selectedCreditNoteId} onValueChange={setSelectedCreditNoteId}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="Appliquer un avoir..." />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Appliquer un avoir..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Aucun</SelectItem>
-                    {availableCreditNotes.map(cn => (
+                    {creditNotes.map(cn => (
                       <SelectItem key={cn.id} value={cn.id}>
-                        {formatCurrency(cn.amount)} — {new Date(cn.date).toLocaleDateString('fr-FR')} {cn.clientId ? `(${cn.clientId})` : ''}
+                        {formatCurrency(cn.amount)} — {new Date(cn.date).toLocaleDateString('fr-FR')} {cn.client_id ? `(${cn.client_id})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -259,17 +278,16 @@ const SalesPage: React.FC = () => {
             )}
 
             {creditNoteAmount > 0 && (
-              <div className="flex justify-between text-sm text-accent-foreground">
-                <span>Avoir appliqué</span>
-                <span>-{formatCurrency(creditNoteAmount)}</span>
-              </div>
-            )}
-
-            {creditNoteAmount > 0 && (
-              <div className="flex justify-between text-base font-bold">
-                <span>Reste à payer</span>
-                <span className="text-primary">{formatCurrency(amountDue)}</span>
-              </div>
+              <>
+                <div className="flex justify-between text-sm text-accent-foreground">
+                  <span>Avoir appliqué</span>
+                  <span>-{formatCurrency(creditNoteAmount)}</span>
+                </div>
+                <div className="flex justify-between text-base font-bold">
+                  <span>Reste à payer</span>
+                  <span className="text-primary">{formatCurrency(amountDue)}</span>
+                </div>
+              </>
             )}
 
             <Input placeholder="ID Client (optionnel)" value={clientId} onChange={e => setClientId(e.target.value)} />
@@ -286,41 +304,38 @@ const SalesPage: React.FC = () => {
 
             {lastSale && (
               <Button variant="outline" className="w-full" onClick={printReceipt}>
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimer ticket ({lastSale.invoiceNumber})
+                <Printer className="h-4 w-4 mr-2" /> Imprimer ticket ({lastSale.invoice_number})
               </Button>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Print Receipt (hidden) */}
-      {lastSale && (
+      {lastSale && siteSettings && (
         <div className="print-only fixed inset-0 bg-white p-4 text-black" style={{ fontFamily: 'monospace', fontSize: '12px' }}>
           <div className="text-center mb-4">
-            <p className="font-bold text-lg">Le Bon Goût</p>
-            <p>12 Rue de la Paix, 75002 Paris</p>
-            <p>Tél: +33 1 42 00 00 00</p>
+            <p className="font-bold text-lg">{siteSettings.restaurant_name}</p>
+            <p>{siteSettings.address}</p>
+            <p>Tél: {siteSettings.phone}</p>
             <p>────────────────────────</p>
           </div>
-          <p>Facture: {lastSale.invoiceNumber}</p>
+          <p>Facture: {lastSale.invoice_number}</p>
           <p>Date: {new Date(lastSale.date).toLocaleString('fr-FR')}</p>
-          {lastSale.clientId && <p>Client: {lastSale.clientId}</p>}
+          {lastSale.client_id && <p>Client: {lastSale.client_id}</p>}
           <p>────────────────────────</p>
-          {lastSale.lines.map((line, i) => (
+          {lastSale.lines?.map((line: any, i: number) => (
             <div key={i}>
-              <p>{line.productName}</p>
+              <p>{line.product_name}</p>
               <p className="flex justify-between">
-                <span>{line.quantity} × {formatCurrency(line.priceTTC)}</span>
-                <span>{formatCurrency(line.totalTTC)}</span>
+                <span>{line.quantity} × {formatCurrency(line.price_ttc)}</span>
+                <span>{formatCurrency(line.total_ttc)}</span>
               </p>
             </div>
           ))}
           <p>────────────────────────</p>
-          <p className="flex justify-between font-bold"><span>TOTAL TTC</span><span>{formatCurrency(lastSale.totalTTC)}</span></p>
-          {lastSale.creditNoteId && <p className="flex justify-between"><span>Avoir</span><span>-{formatCurrency(creditNoteAmount)}</span></p>}
-          <p className="flex justify-between"><span>Reçu</span><span>{formatCurrency(lastSale.amountReceived)}</span></p>
-          <p className="flex justify-between"><span>Rendu</span><span>{formatCurrency(lastSale.amountReturned)}</span></p>
+          <p className="flex justify-between font-bold"><span>TOTAL TTC</span><span>{formatCurrency(lastSale.total_ttc)}</span></p>
+          <p className="flex justify-between"><span>Reçu</span><span>{formatCurrency(lastSale.amount_received)}</span></p>
+          <p className="flex justify-between"><span>Rendu</span><span>{formatCurrency(lastSale.amount_returned)}</span></p>
           <p className="text-center mt-4">Merci de votre visite !</p>
         </div>
       )}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UtensilsCrossed, Plus, Pencil, Trash2, ImageIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -8,27 +9,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Product, Category } from '@/types';
-import { mockProducts as defaultProducts, mockCategories as defaultCategories } from '@/data/mock-data';
-
-const PROD_KEY = 'gv_products';
-const CAT_KEY = 'gv_categories';
-
-const getProducts = (): Product[] => {
-  const saved = localStorage.getItem(PROD_KEY);
-  return saved ? JSON.parse(saved) : defaultProducts;
-};
-
-const getCategories = (): Category[] => {
-  const saved = localStorage.getItem(CAT_KEY);
-  return saved ? JSON.parse(saved) : defaultCategories;
-};
+import type { Tables } from '@/integrations/supabase/types';
 
 const ProductsPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(getProducts);
-  const categories = getCategories();
+  const [products, setProducts] = useState<Tables<'products'>[]>([]);
+  const [categories, setCategories] = useState<Tables<'categories'>[]>([]);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Product | null>(null);
+  const [editing, setEditing] = useState<Tables<'products'> | null>(null);
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [priceHT, setPriceHT] = useState('');
@@ -36,20 +23,19 @@ const ProductsPage: React.FC = () => {
   const [stock, setStock] = useState('0');
   const [imageUrl, setImageUrl] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem(PROD_KEY, JSON.stringify(products));
-  }, [products]);
-
-  const getCategoryName = (id: string) => categories.find(c => c.id === id)?.name || '—';
-  const formatCurrency = (v: number) => `${v.toFixed(0)} FCFA`;
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setImageUrl(reader.result as string);
-    reader.readAsDataURL(file);
+  const fetchData = async () => {
+    const [prodRes, catRes] = await Promise.all([
+      supabase.from('products').select('*').order('name'),
+      supabase.from('categories').select('*').order('name'),
+    ]);
+    if (prodRes.data) setProducts(prodRes.data);
+    if (catRes.data) setCategories(catRes.data);
   };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const getCategoryName = (id: string | null) => categories.find(c => c.id === id)?.name || '—';
+  const formatCurrency = (v: number) => `${v.toFixed(0)} FCFA`;
 
   const openAdd = () => {
     setEditing(null);
@@ -57,31 +43,41 @@ const ProductsPage: React.FC = () => {
     setOpen(true);
   };
 
-  const openEdit = (p: Product) => {
+  const openEdit = (p: Tables<'products'>) => {
     setEditing(p);
-    setName(p.name); setCategoryId(p.categoryId); setPriceHT(String(p.priceHT)); setTvaRate(String(p.tvaRate)); setStock(String(p.stock)); setImageUrl(p.imageUrl || '');
+    setName(p.name); setCategoryId(p.category_id || ''); setPriceHT(String(p.price_ht)); setTvaRate(String(p.tva_rate)); setStock(String(p.stock)); setImageUrl(p.image_url || '');
     setOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim() || !categoryId || !priceHT) {
       toast({ title: 'Erreur', description: 'Remplissez tous les champs requis.', variant: 'destructive' });
       return;
     }
+    const payload = {
+      name,
+      category_id: categoryId,
+      price_ht: parseFloat(priceHT),
+      tva_rate: parseFloat(tvaRate),
+      stock: parseInt(stock),
+      image_url: imageUrl || null,
+    };
+
     if (editing) {
-      setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, name, categoryId, priceHT: parseFloat(priceHT), tvaRate: parseFloat(tvaRate), stock: parseInt(stock), imageUrl } : p));
+      await supabase.from('products').update(payload).eq('id', editing.id);
       toast({ title: 'Produit modifié' });
     } else {
-      const newProd: Product = { id: crypto.randomUUID(), name, categoryId, priceHT: parseFloat(priceHT), tvaRate: parseFloat(tvaRate), stock: parseInt(stock), active: true, imageUrl };
-      setProducts(prev => [...prev, newProd]);
+      await supabase.from('products').insert(payload);
       toast({ title: 'Produit ajouté' });
     }
     setOpen(false);
+    fetchData();
   };
 
-  const handleDelete = (id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
+  const handleDelete = async (id: string) => {
+    await supabase.from('products').delete().eq('id', id);
     toast({ title: 'Produit supprimé' });
+    fetchData();
   };
 
   return (
@@ -109,13 +105,13 @@ const ProductsPage: React.FC = () => {
               {products.map(p => (
                 <TableRow key={p.id}>
                   <TableCell>
-                    {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded object-cover" /> : <ImageIcon className="h-10 w-10 text-muted-foreground/30" />}
+                    {p.image_url ? <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded object-cover" /> : <ImageIcon className="h-10 w-10 text-muted-foreground/30" />}
                   </TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell>{getCategoryName(p.categoryId)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(p.priceHT)}</TableCell>
-                  <TableCell className="text-right">{p.tvaRate}%</TableCell>
-                  <TableCell className="text-right font-bold">{formatCurrency(p.priceHT * (1 + p.tvaRate / 100))}</TableCell>
+                  <TableCell>{getCategoryName(p.category_id)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(p.price_ht)}</TableCell>
+                  <TableCell className="text-right">{p.tva_rate}%</TableCell>
+                  <TableCell className="text-right font-bold">{formatCurrency(p.price_ht * (1 + p.tva_rate / 100))}</TableCell>
                   <TableCell className="text-right">{p.stock}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -150,9 +146,8 @@ const ProductsPage: React.FC = () => {
               <div className="space-y-2"><Label>Stock</Label><Input type="number" value={stock} onChange={e => setStock(e.target.value)} /></div>
             </div>
             <div className="space-y-2">
-              <Label>Image</Label>
-              <Input type="file" accept="image/*" onChange={handleImageUpload} />
-              {imageUrl && <img src={imageUrl} alt="preview" className="h-20 w-20 rounded object-cover mt-2" />}
+              <Label>URL Image</Label>
+              <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
             </div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? 'Enregistrer' : 'Ajouter'}</Button></DialogFooter>
