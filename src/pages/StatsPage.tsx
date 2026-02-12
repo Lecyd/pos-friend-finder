@@ -1,13 +1,21 @@
-import React, { useMemo, useState } from 'react';
-import { Sale } from '@/types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, TrendingUp, ShoppingCart, DollarSign } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { Tables } from '@/integrations/supabase/types';
 
 const StatsPage: React.FC = () => {
-  const allSales: Sale[] = useMemo(() => {
-    return (JSON.parse(localStorage.getItem('gv_sales') || '[]') as Sale[]).filter(s => s.status === 'completed');
+  const [allSales, setAllSales] = useState<Tables<'sales'>[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from('sales')
+      .select('*')
+      .eq('status', 'completed')
+      .order('date', { ascending: false })
+      .then(({ data }) => { if (data) setAllSales(data); });
   }, []);
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -17,7 +25,7 @@ const StatsPage: React.FC = () => {
 
   const today = new Date().toDateString();
   const todaySales = allSales.filter(s => new Date(s.date).toDateString() === today);
-  const todayTotal = todaySales.reduce((sum, s) => sum + s.totalTTC, 0);
+  const todayTotal = todaySales.reduce((sum, s) => sum + s.total_ttc, 0);
 
   const chartData = useMemo(() => {
     const days: { name: string; total: number }[] = [];
@@ -28,7 +36,7 @@ const StatsPage: React.FC = () => {
       const dayName = d.toLocaleDateString('fr-FR', { weekday: 'short' });
       const total = allSales
         .filter(s => new Date(s.date).toDateString() === dateStr)
-        .reduce((sum, s) => sum + s.totalTTC, 0);
+        .reduce((sum, s) => sum + s.total_ttc, 0);
       days.push({ name: dayName, total });
     }
     return days;
@@ -52,7 +60,7 @@ const StatsPage: React.FC = () => {
     });
   }, [allSales, selectedMonth]);
 
-  const monthlyTotal = monthlySales.reduce((sum, s) => sum + s.totalTTC, 0);
+  const monthlyTotal = monthlySales.reduce((sum, s) => sum + s.total_ttc, 0);
 
   const monthlyChartData = useMemo(() => {
     const [year, month] = selectedMonth.split('-').map(Number);
@@ -63,7 +71,7 @@ const StatsPage: React.FC = () => {
       const dateStr = date.toDateString();
       const total = allSales
         .filter(s => new Date(s.date).toDateString() === dateStr)
-        .reduce((sum, s) => sum + s.totalTTC, 0);
+        .reduce((sum, s) => sum + s.total_ttc, 0);
       data.push({ name: String(d), total });
     }
     return data;
@@ -81,7 +89,6 @@ const StatsPage: React.FC = () => {
       <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
         <BarChart3 className="h-5 w-5" /> Tableau de Bord
       </h2>
-
       <div className="grid gap-4 md:grid-cols-3 mb-6">
         <Card className="border-border/50">
           <CardContent className="pt-6">

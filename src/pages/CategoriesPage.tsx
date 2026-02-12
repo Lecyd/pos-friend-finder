@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Tag, Plus, Pencil, Trash2, ImageIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -7,71 +8,57 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Category } from '@/types';
-import { mockCategories as defaultCategories } from '@/data/mock-data';
-
-const STORAGE_KEY = 'gv_categories';
-
-const getCategories = (): Category[] => {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  return saved ? JSON.parse(saved) : defaultCategories;
-};
+import type { Tables } from '@/integrations/supabase/types';
 
 const CategoriesPage: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>(getCategories);
+  const [categories, setCategories] = useState<Tables<'categories'>[]>([]);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Category | null>(null);
+  const [editing, setEditing] = useState<Tables<'categories'> | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
-  }, [categories]);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setImageUrl(reader.result as string);
-    reader.readAsDataURL(file);
+  const fetchCategories = async () => {
+    const { data } = await supabase.from('categories').select('*').order('name');
+    if (data) setCategories(data);
   };
+
+  useEffect(() => { fetchCategories(); }, []);
 
   const openAdd = () => {
     setEditing(null);
-    setName('');
-    setDescription('');
-    setImageUrl('');
+    setName(''); setDescription(''); setImageUrl('');
     setOpen(true);
   };
 
-  const openEdit = (cat: Category) => {
+  const openEdit = (cat: Tables<'categories'>) => {
     setEditing(cat);
     setName(cat.name);
     setDescription(cat.description || '');
-    setImageUrl(cat.imageUrl || '');
+    setImageUrl(cat.image_url || '');
     setOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       toast({ title: 'Erreur', description: 'Le nom est requis.', variant: 'destructive' });
       return;
     }
     if (editing) {
-      setCategories(prev => prev.map(c => c.id === editing.id ? { ...c, name, description, imageUrl } : c));
+      await supabase.from('categories').update({ name, description, image_url: imageUrl || null }).eq('id', editing.id);
       toast({ title: 'Catégorie modifiée' });
     } else {
-      const newCat: Category = { id: crypto.randomUUID(), name, description, imageUrl };
-      setCategories(prev => [...prev, newCat]);
+      await supabase.from('categories').insert({ name, description, image_url: imageUrl || null });
       toast({ title: 'Catégorie ajoutée' });
     }
     setOpen(false);
+    fetchCategories();
   };
 
-  const handleDelete = (id: string) => {
-    setCategories(prev => prev.filter(c => c.id !== id));
+  const handleDelete = async (id: string) => {
+    await supabase.from('categories').delete().eq('id', id);
     toast({ title: 'Catégorie supprimée' });
+    fetchCategories();
   };
 
   return (
@@ -95,7 +82,7 @@ const CategoriesPage: React.FC = () => {
               {categories.map(c => (
                 <TableRow key={c.id}>
                   <TableCell>
-                    {c.imageUrl ? <img src={c.imageUrl} alt={c.name} className="h-10 w-10 rounded object-cover" /> : <ImageIcon className="h-10 w-10 text-muted-foreground/30" />}
+                    {c.image_url ? <img src={c.image_url} alt={c.name} className="h-10 w-10 rounded object-cover" /> : <ImageIcon className="h-10 w-10 text-muted-foreground/30" />}
                   </TableCell>
                   <TableCell className="font-medium">{c.name}</TableCell>
                   <TableCell className="text-muted-foreground">{c.description || '—'}</TableCell>
@@ -119,9 +106,8 @@ const CategoriesPage: React.FC = () => {
             <div className="space-y-2"><Label>Nom</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
             <div className="space-y-2"><Label>Description</Label><Input value={description} onChange={e => setDescription(e.target.value)} /></div>
             <div className="space-y-2">
-              <Label>Image</Label>
-              <Input type="file" accept="image/*" onChange={handleImageUpload} />
-              {imageUrl && <img src={imageUrl} alt="preview" className="h-20 w-20 rounded object-cover mt-2" />}
+              <Label>URL Image</Label>
+              <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
             </div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? 'Enregistrer' : 'Ajouter'}</Button></DialogFooter>

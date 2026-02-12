@@ -1,28 +1,40 @@
-import React, { useMemo } from 'react';
-import { Sale } from '@/types';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { XCircle } from 'lucide-react';
+import type { Tables } from '@/integrations/supabase/types';
 
 const CancelSalesPage: React.FC = () => {
-  const sales: Sale[] = useMemo(() => {
-    return JSON.parse(localStorage.getItem('gv_sales') || '[]');
-  }, []);
+  const [sales, setSales] = useState<Tables<'sales'>[]>([]);
 
-  const todaySales = sales.filter(s => {
-    const today = new Date().toDateString();
-    return new Date(s.date).toDateString() === today;
-  });
+  const fetchSales = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const { data } = await supabase
+      .from('sales')
+      .select('*')
+      .gte('date', today)
+      .order('date', { ascending: false });
+    if (data) setSales(data);
+  };
 
-  const handleCancel = (saleId: string) => {
-    const all: Sale[] = JSON.parse(localStorage.getItem('gv_sales') || '[]');
-    const updated = all.map(s => s.id === saleId ? { ...s, status: 'cancelled' as const } : s);
-    localStorage.setItem('gv_sales', JSON.stringify(updated));
+  useEffect(() => { fetchSales(); }, []);
+
+  const handleCancel = async (saleId: string) => {
+    const { error } = await supabase
+      .from('sales')
+      .update({ status: 'cancelled' })
+      .eq('id', saleId);
+
+    if (error) {
+      toast({ title: 'Erreur', description: 'Impossible d\'annuler.', variant: 'destructive' });
+      return;
+    }
     toast({ title: 'Vente annulée' });
-    window.location.reload();
+    fetchSales();
   };
 
   const formatCurrency = (v: number) => `${v.toFixed(0)} FCFA`;
@@ -45,14 +57,14 @@ const CancelSalesPage: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {todaySales.length === 0 && (
+              {sales.length === 0 && (
                 <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Aucune vente</TableCell></TableRow>
               )}
-              {todaySales.map(sale => (
+              {sales.map(sale => (
                 <TableRow key={sale.id}>
-                  <TableCell className="font-medium">{sale.invoiceNumber}</TableCell>
+                  <TableCell className="font-medium">{sale.invoice_number}</TableCell>
                   <TableCell>{new Date(sale.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
-                  <TableCell className="text-right font-bold">{formatCurrency(sale.totalTTC)}</TableCell>
+                  <TableCell className="text-right font-bold">{formatCurrency(sale.total_ttc)}</TableCell>
                   <TableCell>
                     <Badge variant={sale.status === 'completed' ? 'default' : 'destructive'}>
                       {sale.status === 'completed' ? 'Complétée' : 'Annulée'}

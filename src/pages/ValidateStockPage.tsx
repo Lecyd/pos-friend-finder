@@ -1,33 +1,54 @@
-import React, { useMemo } from 'react';
-import { StockEntry } from '@/types';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { CheckSquare } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import type { Tables } from '@/integrations/supabase/types';
 
 const ValidateStockPage: React.FC = () => {
   const { user } = useAuth();
-  const entries: StockEntry[] = useMemo(() => {
-    return JSON.parse(localStorage.getItem('gv_stock_entries') || '[]');
-  }, []);
+  const [entries, setEntries] = useState<Tables<'stock_entries'>[]>([]);
 
-  const handleValidate = (entryId: string) => {
-    const all: StockEntry[] = JSON.parse(localStorage.getItem('gv_stock_entries') || '[]');
-    const updated = all.map(e => e.id === entryId ? { ...e, status: 'validated' as const, validatedBy: user?.name } : e);
-    localStorage.setItem('gv_stock_entries', JSON.stringify(updated));
-    toast({ title: 'Stock validé' });
-    window.location.reload();
+  const fetchEntries = async () => {
+    const { data } = await supabase
+      .from('stock_entries')
+      .select('*')
+      .order('date', { ascending: false });
+    if (data) setEntries(data);
   };
 
-  const handleReject = (entryId: string) => {
-    const all: StockEntry[] = JSON.parse(localStorage.getItem('gv_stock_entries') || '[]');
-    const updated = all.map(e => e.id === entryId ? { ...e, status: 'rejected' as const } : e);
-    localStorage.setItem('gv_stock_entries', JSON.stringify(updated));
+  useEffect(() => { fetchEntries(); }, []);
+
+  const handleValidate = async (entryId: string) => {
+    const { error } = await supabase
+      .from('stock_entries')
+      .update({ status: 'validated', validated_by: user!.id })
+      .eq('id', entryId);
+
+    if (error) {
+      toast({ title: 'Erreur', variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Stock validé' });
+    fetchEntries();
+  };
+
+  const handleReject = async (entryId: string) => {
+    const { error } = await supabase
+      .from('stock_entries')
+      .update({ status: 'rejected' })
+      .eq('id', entryId);
+
+    if (error) {
+      toast({ title: 'Erreur', variant: 'destructive' });
+      return;
+    }
     toast({ title: 'Stock rejeté' });
-    window.location.reload();
+    fetchEntries();
   };
 
   const statusVariant = (status: string) => {
@@ -66,7 +87,7 @@ const ValidateStockPage: React.FC = () => {
               )}
               {entries.map(entry => (
                 <TableRow key={entry.id}>
-                  <TableCell className="font-medium">{entry.productName}</TableCell>
+                  <TableCell className="font-medium">{entry.product_name}</TableCell>
                   <TableCell>{entry.quantity}</TableCell>
                   <TableCell>{entry.supplier}</TableCell>
                   <TableCell>{new Date(entry.date).toLocaleDateString('fr-FR')}</TableCell>

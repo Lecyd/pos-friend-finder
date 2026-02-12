@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Expense } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,52 +8,55 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { Receipt } from 'lucide-react';
+import type { Tables } from '@/integrations/supabase/types';
 
 const ExpensesPage: React.FC = () => {
   const { user } = useAuth();
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [monthlyExpenses, setMonthlyExpenses] = useState<Tables<'expenses'>[]>([]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchExpenses = async () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+    const { data } = await supabase
+      .from('expenses')
+      .select('*')
+      .gte('date', start)
+      .lt('date', end)
+      .order('date', { ascending: false });
+    if (data) setMonthlyExpenses(data);
+  };
+
+  useEffect(() => { fetchExpenses(); }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!label || !amount || !category) {
       toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
       return;
     }
 
-    const expense: Expense = {
-      id: crypto.randomUUID(),
+    const { error } = await supabase.from('expenses').insert({
       label,
       amount: parseFloat(amount),
       category,
-      date: new Date().toISOString(),
-      userId: user?.id || '',
-    };
+      user_id: user!.id,
+    });
 
-    const expenses = JSON.parse(localStorage.getItem('gv_expenses') || '[]');
-    expenses.push(expense);
-    localStorage.setItem('gv_expenses', JSON.stringify(expenses));
+    if (error) {
+      toast({ title: 'Erreur', description: 'Impossible d\'enregistrer.', variant: 'destructive' });
+      return;
+    }
 
     setLabel('');
     setAmount('');
     setCategory('');
-    setRefreshKey(k => k + 1);
+    fetchExpenses();
     toast({ title: 'Dépense enregistrée' });
   };
-
-  const monthlyExpenses = useMemo(() => {
-    const all: Expense[] = JSON.parse(localStorage.getItem('gv_expenses') || '[]');
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    return all.filter(e => {
-      const d = new Date(e.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey]);
 
   const totalMonth = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
   const formatCurrency = (v: number) => `${v.toFixed(0)} FCFA`;
@@ -79,9 +82,6 @@ const ExpensesPage: React.FC = () => {
                 <Label>Catégorie</Label>
                 <Input value={category} onChange={e => setCategory(e.target.value)} placeholder="Ex: Fournitures" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                📎 La pièce jointe (justificatif) sera disponible avec le backend.
-              </p>
               <Button type="submit" className="w-full">Enregistrer la dépense</Button>
             </form>
           </CardContent>
@@ -104,11 +104,7 @@ const ExpensesPage: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {monthlyExpenses.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                        Aucune dépense ce mois
-                      </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucune dépense ce mois</TableCell></TableRow>
                   )}
                   {monthlyExpenses.map(expense => (
                     <TableRow key={expense.id}>

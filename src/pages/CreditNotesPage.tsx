@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { CreditNote } from '@/types';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,51 +10,68 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { CreditCard, Printer } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { defaultSiteSettings } from '@/data/mock-data';
+import type { Tables } from '@/integrations/supabase/types';
 
 const CreditNotesPage: React.FC = () => {
   const { user } = useAuth();
   const [amount, setAmount] = useState('');
   const [clientId, setClientId] = useState('');
-  const [lastCreatedNote, setLastCreatedNote] = useState<CreditNote | null>(null);
+  const [lastCreatedNote, setLastCreatedNote] = useState<Tables<'credit_notes'> | null>(null);
+  const [creditNotes, setCreditNotes] = useState<Tables<'credit_notes'>[]>([]);
+  const [siteSettings, setSiteSettings] = useState<Tables<'site_settings'> | null>(null);
 
-  const creditNotes: CreditNote[] = JSON.parse(localStorage.getItem('gv_credit_notes') || '[]');
+  const fetchData = async () => {
+    const [cnRes, settingsRes] = await Promise.all([
+      supabase.from('credit_notes').select('*').order('date', { ascending: false }),
+      supabase.from('site_settings').select('*').limit(1).single(),
+    ]);
+    if (cnRes.data) setCreditNotes(cnRes.data);
+    if (settingsRes.data) setSiteSettings(settingsRes.data);
+  };
 
-  const handleCreate = (e: React.FormEvent) => {
+  useEffect(() => { fetchData(); }, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount) {
       toast({ title: 'Erreur', description: 'Veuillez saisir un montant.', variant: 'destructive' });
       return;
     }
 
-    const note: CreditNote = {
-      id: crypto.randomUUID(),
-      amount: parseFloat(amount),
-      clientId: clientId || undefined,
-      date: new Date().toISOString(),
-      used: false,
-    };
+    const { data, error } = await supabase
+      .from('credit_notes')
+      .insert({
+        amount: parseFloat(amount),
+        client_id: clientId || null,
+        created_by: user!.id,
+      })
+      .select()
+      .single();
 
-    const notes = [...creditNotes, note];
-    localStorage.setItem('gv_credit_notes', JSON.stringify(notes));
+    if (error || !data) {
+      toast({ title: 'Erreur', description: 'Impossible de créer.', variant: 'destructive' });
+      return;
+    }
+
     setAmount('');
     setClientId('');
-    setLastCreatedNote(note);
+    setLastCreatedNote(data);
+    fetchData();
     toast({ title: 'Ticket avoir créé' });
   };
 
   const formatCurrency = (v: number) => `${v.toFixed(0)} FCFA`;
 
-  const printCreditNote = (note: CreditNote) => {
+  const printCreditNote = (note: Tables<'credit_notes'>) => {
     setLastCreatedNote(note);
     setTimeout(() => window.print(), 100);
   };
 
-  const getQRData = (note: CreditNote) => {
+  const getQRData = (note: Tables<'credit_notes'>) => {
     return JSON.stringify({
-      restaurant: defaultSiteSettings.restaurantName,
+      restaurant: siteSettings?.restaurant_name || '',
       montant: note.amount,
-      devise: defaultSiteSettings.currency,
+      devise: siteSettings?.currency || 'FCFA',
       id: note.id,
       date: note.date,
     });
@@ -101,7 +118,7 @@ const CreditNotesPage: React.FC = () => {
                   <TableRow key={note.id}>
                     <TableCell>{new Date(note.date).toLocaleDateString('fr-FR')}</TableCell>
                     <TableCell className="font-bold">{formatCurrency(note.amount)}</TableCell>
-                    <TableCell>{note.clientId || '—'}</TableCell>
+                    <TableCell>{note.client_id || '—'}</TableCell>
                     <TableCell>
                       <Badge variant={note.used ? 'secondary' : 'default'}>
                         {note.used ? 'Utilisé' : 'Disponible'}
@@ -120,31 +137,26 @@ const CreditNotesPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Print Credit Note (hidden) */}
-      {lastCreatedNote && (
+      {lastCreatedNote && siteSettings && (
         <div className="print-only fixed inset-0 bg-white p-4 text-black" style={{ fontFamily: 'monospace', fontSize: '12px' }}>
           <div className="text-center mb-4">
-            <p className="font-bold text-lg">{defaultSiteSettings.restaurantName}</p>
-            <p>{defaultSiteSettings.address}</p>
-            <p>Tél: {defaultSiteSettings.phone}</p>
+            <p className="font-bold text-lg">{siteSettings.restaurant_name}</p>
+            <p>{siteSettings.address}</p>
+            <p>Tél: {siteSettings.phone}</p>
             <p>────────────────────────</p>
             <p className="font-bold text-base mt-2">TICKET AVOIR</p>
             <p>────────────────────────</p>
           </div>
           <p>N°: {lastCreatedNote.id.slice(0, 8).toUpperCase()}</p>
           <p>Date: {new Date(lastCreatedNote.date).toLocaleString('fr-FR')}</p>
-          {lastCreatedNote.clientId && <p>Client: {lastCreatedNote.clientId}</p>}
+          {lastCreatedNote.client_id && <p>Client: {lastCreatedNote.client_id}</p>}
           <p>────────────────────────</p>
-          <p className="text-center font-bold text-lg my-2">
-            {formatCurrency(lastCreatedNote.amount)}
-          </p>
+          <p className="text-center font-bold text-lg my-2">{formatCurrency(lastCreatedNote.amount)}</p>
           <p>────────────────────────</p>
           <div className="flex justify-center my-4">
             <QRCodeSVG value={getQRData(lastCreatedNote)} size={120} />
           </div>
-          <p className="text-center text-xs mt-2">
-            Scannez ce QR code pour vérifier ce ticket avoir
-          </p>
+          <p className="text-center text-xs mt-2">Scannez ce QR code pour vérifier ce ticket avoir</p>
           <p className="text-center mt-4">Merci de votre visite !</p>
         </div>
       )}
