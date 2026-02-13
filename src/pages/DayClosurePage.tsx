@@ -67,6 +67,21 @@ const DayClosurePage: React.FC = () => {
       return;
     }
 
+    // Set opening_sale.is_open = false
+    const { data: existing } = await supabase
+      .from('opening_sale')
+      .select('id')
+      .eq('user_id', user!.id)
+      .limit(1)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from('opening_sale')
+        .update({ is_open: false, updated_at: new Date().toISOString() })
+        .eq('id', existing.id);
+    }
+
     // Generate PDF before clearing
     generatePDF();
 

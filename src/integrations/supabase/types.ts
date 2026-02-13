@@ -130,6 +130,27 @@ export type Database = {
         }
         Relationships: []
       }
+      opening_sale: {
+        Row: {
+          id: string
+          is_open: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_open?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_open?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           active: boolean
