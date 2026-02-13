@@ -140,6 +140,7 @@ export type Database = {
           name: string
           price_ht: number
           stock: number
+          stock_threshold: number
           tva_rate: number
           updated_at: string
         }
@@ -152,6 +153,7 @@ export type Database = {
           name: string
           price_ht?: number
           stock?: number
+          stock_threshold?: number
           tva_rate?: number
           updated_at?: string
         }
@@ -164,6 +166,7 @@ export type Database = {
           name?: string
           price_ht?: number
           stock?: number
+          stock_threshold?: number
           tva_rate?: number
           updated_at?: string
         }

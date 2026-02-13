@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import ImageUpload from '@/components/ImageUpload';
 import type { Tables } from '@/integrations/supabase/types';
 
 const SettingsPage: React.FC = () => {
@@ -15,6 +16,7 @@ const SettingsPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [defaultTvaRate, setDefaultTvaRate] = useState('');
   const [currency, setCurrency] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
 
   useEffect(() => {
     supabase.from('site_settings').select('*').limit(1).single().then(({ data }) => {
@@ -25,6 +27,7 @@ const SettingsPage: React.FC = () => {
         setPhone(data.phone);
         setDefaultTvaRate(String(data.default_tva_rate));
         setCurrency(data.currency);
+        setLogoUrl(data.logo_url || '');
       }
     });
   }, []);
@@ -37,6 +40,7 @@ const SettingsPage: React.FC = () => {
       phone,
       default_tva_rate: parseFloat(defaultTvaRate),
       currency,
+      logo_url: logoUrl || null,
     }).eq('id', settings.id);
 
     if (error) {
@@ -53,6 +57,10 @@ const SettingsPage: React.FC = () => {
       </h2>
       <Card className="border-border/50">
         <CardContent className="pt-6 space-y-4">
+          <div className="space-y-2">
+            <Label>Logo du restaurant</Label>
+            <ImageUpload currentUrl={logoUrl} onUpload={setLogoUrl} folder="logo" />
+          </div>
           <div className="space-y-2">
             <Label>Nom du restaurant</Label>
             <Input value={restaurantName} onChange={e => setRestaurantName(e.target.value)} />
