@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, CreditCard, XCircle } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, CreditCard, XCircle, PlayCircle } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Product = Tables<'products'>;
@@ -32,8 +32,29 @@ const SalesPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [siteSettings, setSiteSettings] = useState<Tables<'site_settings'> | null>(null);
+  const [dayOpen, setDayOpen] = useState(false);
+  const [checkingDay, setCheckingDay] = useState(true);
 
   useEffect(() => {
+    const checkDayStatus = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      // Check if day was already closed today
+      const { data: closure } = await supabase
+        .from('day_closures')
+        .select('id')
+        .eq('date', today)
+        .limit(1);
+
+      // If no closure exists for today, day is open by default
+      // If closure exists, day is closed and user must reopen
+      if (closure && closure.length > 0) {
+        setDayOpen(false);
+      } else {
+        setDayOpen(true);
+      }
+      setCheckingDay(false);
+    };
+
     const fetchData = async () => {
       const [prodRes, catRes, cnRes, settingsRes] = await Promise.all([
         supabase.from('products').select('*').eq('active', true),
@@ -46,6 +67,8 @@ const SalesPage: React.FC = () => {
       if (cnRes.data) setCreditNotes(cnRes.data);
       if (settingsRes.data) setSiteSettings(settingsRes.data);
     };
+
+    checkDayStatus();
     fetchData();
   }, []);
 
@@ -121,7 +144,6 @@ const SalesPage: React.FC = () => {
 
     const invoiceNumber = `FAC-${Date.now().toString(36).toUpperCase()}`;
 
-    // Insert sale
     const { data: sale, error: saleError } = await supabase
       .from('sales')
       .insert({
@@ -142,7 +164,6 @@ const SalesPage: React.FC = () => {
       return;
     }
 
-    // Insert sale lines
     const lines = cart.map(c => {
       const priceTTC = c.product.price_ht * (1 + c.product.tva_rate / 100);
       return {
@@ -159,7 +180,6 @@ const SalesPage: React.FC = () => {
 
     await supabase.from('sale_lines').insert(lines);
 
-    // Mark credit note as used
     if (selectedCreditNoteId) {
       await supabase
         .from('credit_notes')
@@ -181,7 +201,27 @@ const SalesPage: React.FC = () => {
     window.print();
   };
 
+  const handleOpenDay = () => {
+    setDayOpen(true);
+    toast({ title: 'Journée ouverte', description: 'Vous pouvez maintenant effectuer des ventes.' });
+  };
+
   const formatCurrency = (amount: number) => `${amount.toFixed(0)} FCFA`;
+
+  if (checkingDay) {
+    return <div className="flex items-center justify-center h-64 text-muted-foreground">Chargement...</div>;
+  }
+
+  if (!dayOpen) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <p className="text-lg text-muted-foreground">La journée est clôturée. Ouvrez une nouvelle journée pour commencer les ventes.</p>
+        <Button size="lg" onClick={handleOpenDay}>
+          <PlayCircle className="h-5 w-5 mr-2" /> Ouvrir la journée
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-6 h-[calc(100vh-3rem)]">

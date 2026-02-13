@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
+import ImageUpload from '@/components/ImageUpload';
 import type { Tables } from '@/integrations/supabase/types';
 
 const CategoriesPage: React.FC = () => {
@@ -106,8 +107,8 @@ const CategoriesPage: React.FC = () => {
             <div className="space-y-2"><Label>Nom</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
             <div className="space-y-2"><Label>Description</Label><Input value={description} onChange={e => setDescription(e.target.value)} /></div>
             <div className="space-y-2">
-              <Label>URL Image</Label>
-              <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
+              <Label>Image</Label>
+              <ImageUpload currentUrl={imageUrl} onUpload={setImageUrl} folder="categories" />
             </div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? 'Enregistrer' : 'Ajouter'}</Button></DialogFooter>

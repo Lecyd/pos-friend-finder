@@ -90,8 +90,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return !error;
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return false;
+    // Check if user is active
+    const { data: profile } = await supabase.from('profiles').select('active').eq('id', data.user.id).single();
+    if (profile && !profile.active) {
+      await supabase.auth.signOut();
+      return false;
+    }
+    return true;
   }, []);
 
   const logout = useCallback(async () => {

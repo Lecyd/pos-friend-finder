@@ -5,26 +5,55 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { CalendarCheck, Printer } from 'lucide-react';
+import { CalendarCheck, FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import type { Tables } from '@/integrations/supabase/types';
 
 const DayClosurePage: React.FC = () => {
   const { user } = useAuth();
   const [todaySales, setTodaySales] = useState<Tables<'sales'>[]>([]);
+  const [siteSettings, setSiteSettings] = useState<Tables<'site_settings'> | null>(null);
 
-  useEffect(() => {
+  const fetchData = async () => {
     const today = new Date().toISOString().split('T')[0];
-    supabase
-      .from('sales')
-      .select('*')
-      .gte('date', today)
-      .eq('status', 'completed')
-      .order('date', { ascending: true })
-      .then(({ data }) => { if (data) setTodaySales(data); });
-  }, []);
+    const [salesRes, settingsRes] = await Promise.all([
+      supabase.from('sales').select('*').gte('date', today).eq('status', 'completed').order('date', { ascending: true }),
+      supabase.from('site_settings').select('*').limit(1).single(),
+    ]);
+    if (salesRes.data) setTodaySales(salesRes.data);
+    if (settingsRes.data) setSiteSettings(settingsRes.data);
+  };
+
+  useEffect(() => { fetchData(); }, []);
 
   const totalGeneral = todaySales.reduce((sum, s) => sum + s.total_ttc, 0);
   const formatCurrency = (v: number) => `${v.toFixed(0)} FCFA`;
+
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    const today = new Date().toLocaleDateString('fr-FR');
+
+    doc.setFontSize(18);
+    doc.text(siteSettings?.restaurant_name || 'Restaurant', 105, 20, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text(`Feuille de journée — ${today}`, 105, 30, { align: 'center' });
+    doc.text(`Caissier(ère): ${user?.name || ''}`, 14, 45);
+
+    autoTable(doc, {
+      startY: 55,
+      head: [['N° Facture', 'Heure', 'Client', 'Total TTC']],
+      body: todaySales.map(s => [
+        s.invoice_number,
+        new Date(s.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        s.client_id || '—',
+        formatCurrency(s.total_ttc),
+      ]),
+      foot: [['', '', 'TOTAL GÉNÉRAL', formatCurrency(totalGeneral)]],
+    });
+
+    doc.save(`cloture-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   const handleClose = async () => {
     const { error } = await supabase.from('day_closures').insert({
@@ -37,7 +66,12 @@ const DayClosurePage: React.FC = () => {
       toast({ title: 'Erreur', description: 'Impossible de clôturer.', variant: 'destructive' });
       return;
     }
-    toast({ title: 'Journée clôturée', description: `Total: ${formatCurrency(totalGeneral)}` });
+
+    // Generate PDF before clearing
+    generatePDF();
+
+    toast({ title: 'Journée clôturée', description: `Total: ${formatCurrency(totalGeneral)}. PDF téléchargé.` });
+    setTodaySales([]);
   };
 
   return (
@@ -71,10 +105,10 @@ const DayClosurePage: React.FC = () => {
       <div className="flex items-center justify-between">
         <p className="text-lg font-bold">Total Général : <span className="text-primary">{formatCurrency(totalGeneral)}</span></p>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="h-4 w-4 mr-2" /> Imprimer
+          <Button variant="outline" onClick={generatePDF} disabled={todaySales.length === 0}>
+            <FileDown className="h-4 w-4 mr-2" /> Télécharger PDF
           </Button>
-          <Button onClick={handleClose}>Terminer la journée</Button>
+          <Button onClick={handleClose} disabled={todaySales.length === 0}>Terminer la journée</Button>
         </div>
       </div>
     </div>

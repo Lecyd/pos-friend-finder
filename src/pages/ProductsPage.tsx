@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { UtensilsCrossed, Plus, Pencil, Trash2, ImageIcon } from 'lucide-react';
+import { UtensilsCrossed, Plus, Pencil, Trash2, ImageIcon, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
+import ImageUpload from '@/components/ImageUpload';
 import type { Tables } from '@/integrations/supabase/types';
 
 const ProductsPage: React.FC = () => {
@@ -22,6 +24,7 @@ const ProductsPage: React.FC = () => {
   const [tvaRate, setTvaRate] = useState('20');
   const [stock, setStock] = useState('0');
   const [imageUrl, setImageUrl] = useState('');
+  const [stockThreshold, setStockThreshold] = useState('0');
 
   const fetchData = async () => {
     const [prodRes, catRes] = await Promise.all([
@@ -39,13 +42,13 @@ const ProductsPage: React.FC = () => {
 
   const openAdd = () => {
     setEditing(null);
-    setName(''); setCategoryId(''); setPriceHT(''); setTvaRate('20'); setStock('0'); setImageUrl('');
+    setName(''); setCategoryId(''); setPriceHT(''); setTvaRate('20'); setStock('0'); setImageUrl(''); setStockThreshold('0');
     setOpen(true);
   };
 
   const openEdit = (p: Tables<'products'>) => {
     setEditing(p);
-    setName(p.name); setCategoryId(p.category_id || ''); setPriceHT(String(p.price_ht)); setTvaRate(String(p.tva_rate)); setStock(String(p.stock)); setImageUrl(p.image_url || '');
+    setName(p.name); setCategoryId(p.category_id || ''); setPriceHT(String(p.price_ht)); setTvaRate(String(p.tva_rate)); setStock(String(p.stock)); setImageUrl(p.image_url || ''); setStockThreshold(String(p.stock_threshold));
     setOpen(true);
   };
 
@@ -61,6 +64,7 @@ const ProductsPage: React.FC = () => {
       tva_rate: parseFloat(tvaRate),
       stock: parseInt(stock),
       image_url: imageUrl || null,
+      stock_threshold: parseInt(stockThreshold) || 0,
     };
 
     if (editing) {
@@ -98,29 +102,45 @@ const ProductsPage: React.FC = () => {
                 <TableHead className="text-right">TVA</TableHead>
                 <TableHead className="text-right">Prix TTC</TableHead>
                 <TableHead className="text-right">Stock</TableHead>
+                <TableHead className="text-right">Seuil</TableHead>
                 <TableHead className="w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map(p => (
-                <TableRow key={p.id}>
-                  <TableCell>
-                    {p.image_url ? <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded object-cover" /> : <ImageIcon className="h-10 w-10 text-muted-foreground/30" />}
-                  </TableCell>
-                  <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell>{getCategoryName(p.category_id)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(p.price_ht)}</TableCell>
-                  <TableCell className="text-right">{p.tva_rate}%</TableCell>
-                  <TableCell className="text-right font-bold">{formatCurrency(p.price_ht * (1 + p.tva_rate / 100))}</TableCell>
-                  <TableCell className="text-right">{p.stock}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {products.map(p => {
+                const isCritical = p.stock_threshold > 0 && p.stock <= p.stock_threshold;
+                return (
+                  <TableRow key={p.id} className={isCritical ? 'bg-destructive/10' : ''}>
+                    <TableCell>
+                      {p.image_url ? <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded object-cover" /> : <ImageIcon className="h-10 w-10 text-muted-foreground/30" />}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {p.name}
+                        {isCritical && <AlertTriangle className="h-4 w-4 text-destructive" />}
+                      </div>
+                    </TableCell>
+                    <TableCell>{getCategoryName(p.category_id)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(p.price_ht)}</TableCell>
+                    <TableCell className="text-right">{p.tva_rate}%</TableCell>
+                    <TableCell className="text-right font-bold">{formatCurrency(p.price_ht * (1 + p.tva_rate / 100))}</TableCell>
+                    <TableCell className="text-right">
+                      {isCritical ? (
+                        <Badge variant="destructive">{p.stock}</Badge>
+                      ) : (
+                        p.stock
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">{p.stock_threshold}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -146,8 +166,12 @@ const ProductsPage: React.FC = () => {
               <div className="space-y-2"><Label>Stock</Label><Input type="number" value={stock} onChange={e => setStock(e.target.value)} /></div>
             </div>
             <div className="space-y-2">
-              <Label>URL Image</Label>
-              <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
+              <Label>Seuil critique d'alerte</Label>
+              <Input type="number" value={stockThreshold} onChange={e => setStockThreshold(e.target.value)} placeholder="0 = pas d'alerte" />
+            </div>
+            <div className="space-y-2">
+              <Label>Image</Label>
+              <ImageUpload currentUrl={imageUrl} onUpload={setImageUrl} folder="products" />
             </div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? 'Enregistrer' : 'Ajouter'}</Button></DialogFooter>

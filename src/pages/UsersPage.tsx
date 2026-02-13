@@ -25,6 +25,7 @@ const UsersPage: React.FC = () => {
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<AppRole>('caissiere');
+  const [creating, setCreating] = useState(false);
 
   const fetchUsers = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*');
@@ -42,7 +43,6 @@ const UsersPage: React.FC = () => {
   useEffect(() => { fetchUsers(); }, []);
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
-    // Upsert role
     const { data: existing } = await supabase
       .from('user_roles')
       .select('id')
@@ -58,20 +58,39 @@ const UsersPage: React.FC = () => {
     fetchUsers();
   };
 
-  const handleToggleActive = async (userId: string, currentActive: boolean) => {
+  const handleToggleActive = async (userId: string, currentActive: boolean, userRole: AppRole) => {
+    if (userRole === 'admin' && currentActive) {
+      toast({ title: 'Interdit', description: 'Un administrateur ne peut pas être désactivé.', variant: 'destructive' });
+      return;
+    }
     await supabase.from('profiles').update({ active: !currentActive }).eq('id', userId);
     toast({ title: currentActive ? 'Utilisateur désactivé' : 'Utilisateur activé' });
     fetchUsers();
   };
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!newName || !newEmail || !newPassword) {
       toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
       return;
     }
-    // Note: Creating users requires admin API - for now show info
-    toast({ title: 'Info', description: 'La création d\'utilisateurs nécessite une invitation par email. Demandez à l\'utilisateur de s\'inscrire.' });
-    setOpen(false);
+    setCreating(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('create-user', {
+        body: { name: newName, email: newEmail, password: newPassword, role: newRole },
+      });
+      if (res.error || res.data?.error) {
+        toast({ title: 'Erreur', description: res.data?.error || 'Impossible de créer l\'utilisateur.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Utilisateur créé avec succès' });
+        setOpen(false);
+        setNewName(''); setNewEmail(''); setNewPassword(''); setNewRole('caissiere');
+        fetchUsers();
+      }
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+    }
+    setCreating(false);
   };
 
   const roleLabel: Record<AppRole, string> = { caissiere: 'Caissière', manager: 'Manager', admin: 'Administrateur' };
@@ -82,6 +101,7 @@ const UsersPage: React.FC = () => {
         <h2 className="text-xl font-bold flex items-center gap-2">
           <Users className="h-5 w-5" /> Gestion des Utilisateurs
         </h2>
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" /> Ajouter un utilisateur</Button>
       </div>
       <Card className="border-border/50">
         <CardContent className="p-0">
@@ -112,14 +132,15 @@ const UsersPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Badge variant={u.active ? 'default' : 'destructive'}>
-                      {u.active ? 'Actif' : 'Inactif'}
+                      {u.active ? 'Actif' : 'Désactivé'}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Button
                       variant={u.active ? 'destructive' : 'default'}
                       size="sm"
-                      onClick={() => handleToggleActive(u.id, u.active)}
+                      onClick={() => handleToggleActive(u.id, u.active, u.role)}
+                      disabled={u.role === 'admin' && u.active}
                     >
                       <Power className="h-4 w-4 mr-1" />
                       {u.active ? 'Désactiver' : 'Activer'}
@@ -131,6 +152,29 @@ const UsersPage: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Ajouter un utilisateur</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2"><Label>Nom complet</Label><Input value={newName} onChange={e => setNewName(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Email</Label><Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Mot de passe</Label><Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} /></div>
+            <div className="space-y-2">
+              <Label>Rôle</Label>
+              <Select value={newRole} onValueChange={(v: AppRole) => setNewRole(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="caissiere">Caissière</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="admin">Administrateur</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter><Button onClick={handleAddUser} disabled={creating}>{creating ? 'Création...' : 'Créer l\'utilisateur'}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
