@@ -37,21 +37,8 @@ const SalesPage: React.FC = () => {
 
   useEffect(() => {
     const checkDayStatus = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      // Check if day was already closed today
-      const { data: closure } = await supabase
-        .from('day_closures')
-        .select('id')
-        .eq('date', today)
-        .limit(1);
-
-      // If no closure exists for today, day is open by default
-      // If closure exists, day is closed and user must reopen
-      if (closure && closure.length > 0) {
-        setDayOpen(false);
-      } else {
-        setDayOpen(true);
-      }
+      // Day is closed by default — user must explicitly open it
+      setDayOpen(false);
       setCheckingDay(false);
     };
 
