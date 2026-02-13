@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import {
   ShoppingCart, List, Package, Receipt, CalendarCheck,
@@ -39,6 +40,32 @@ const navItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [dayOpen, setDayOpen] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchStatus = async () => {
+      const { data } = await supabase
+        .from('opening_sale')
+        .select('is_open')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+      setDayOpen(data?.is_open === true);
+    };
+    fetchStatus();
+
+    const channel = supabase
+      .channel('opening_sale_sidebar')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'opening_sale' }, (payload: any) => {
+        if (payload.new?.user_id === user.id) {
+          setDayOpen(payload.new.is_open === true);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   if (!user) return null;
 
@@ -66,6 +93,18 @@ const AppSidebar: React.FC = () => {
           <p className="text-xs text-sidebar-foreground/60">{roleLabel[user.role]}</p>
         </div>
       </div>
+
+      {dayOpen !== null && (
+        <div className={cn(
+          'mx-3 mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium',
+          dayOpen
+            ? 'bg-green-500/15 text-green-700 dark:text-green-400'
+            : 'bg-destructive/15 text-destructive'
+        )}>
+          <span className={cn('h-2 w-2 rounded-full', dayOpen ? 'bg-green-500 animate-pulse' : 'bg-destructive')} />
+          {dayOpen ? 'Journée ouverte' : 'Journée fermée'}
+        </div>
+      )}
 
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         {filteredItems.map(item => (
