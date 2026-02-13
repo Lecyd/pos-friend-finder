@@ -37,8 +37,14 @@ const SalesPage: React.FC = () => {
 
   useEffect(() => {
     const checkDayStatus = async () => {
-      // Day is closed by default — user must explicitly open it
-      setDayOpen(false);
+      if (!user) { setCheckingDay(false); return; }
+      const { data } = await supabase
+        .from('opening_sale')
+        .select('*')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+      setDayOpen(data?.is_open === true);
       setCheckingDay(false);
     };
 
@@ -57,7 +63,7 @@ const SalesPage: React.FC = () => {
 
     checkDayStatus();
     fetchData();
-  }, []);
+  }, [user]);
 
   const selectedCreditNote = creditNotes.find(cn => cn.id === selectedCreditNoteId);
   const creditNoteAmount = selectedCreditNote?.amount || 0;
@@ -188,7 +194,26 @@ const SalesPage: React.FC = () => {
     window.print();
   };
 
-  const handleOpenDay = () => {
+  const handleOpenDay = async () => {
+    if (!user) return;
+    // Upsert: create or update the row for this user
+    const { data: existing } = await supabase
+      .from('opening_sale')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from('opening_sale')
+        .update({ is_open: true, updated_at: new Date().toISOString() })
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('opening_sale')
+        .insert({ user_id: user.id, is_open: true, updated_at: new Date().toISOString() });
+    }
     setDayOpen(true);
     toast({ title: 'Journée ouverte', description: 'Vous pouvez maintenant effectuer des ventes.' });
   };
