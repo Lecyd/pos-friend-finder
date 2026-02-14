@@ -62,31 +62,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        if (session?.user) {
+          const appUser = await fetchAppUser(session.user);
+          if (isMounted) setUser(appUser);
+        }
+      } catch (error) {
+        console.error('Error during initial auth:', error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
       if (session?.user) {
-        // Use setTimeout to avoid Supabase deadlock
         setTimeout(async () => {
           const appUser = await fetchAppUser(session.user);
-          setUser(appUser);
-          setLoading(false);
+          if (isMounted) setUser(appUser);
         }, 0);
       } else {
         setUser(null);
-        setLoading(false);
       }
     });
 
-    // THEN check existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const appUser = await fetchAppUser(session.user);
-        setUser(appUser);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {

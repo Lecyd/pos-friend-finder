@@ -1,9 +1,10 @@
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import LoginPage from "@/pages/LoginPage";
@@ -24,6 +25,14 @@ import ProfilePage from "@/pages/ProfilePage";
 import AdminExpensesPage from "@/pages/AdminExpensesPage";
 import NotFound from "@/pages/NotFound";
 
+const RoleBasedRedirect: React.FC = () => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'admin') return <Navigate to="/dashboard/stats" replace />;
+  if (user.role === 'manager') return <Navigate to="/dashboard/sales-list" replace />;
+  return <Navigate to="/dashboard/sales" replace />;
+};
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -37,7 +46,7 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-              <Route index element={<Navigate to="sales" replace />} />
+              <Route index element={<RoleBasedRedirect />} />
               <Route path="sales" element={<SalesPage />} />
               <Route path="sales-list" element={<SalesListPage />} />
               <Route path="stock-entry" element={<StockEntryPage />} />

@@ -6,12 +6,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { UserCircle } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import ImageUpload from '@/components/ImageUpload';
 
 const ProfilePage: React.FC = () => {
   const { user, updateProfile, updatePassword } = useAuth();
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState(user?.address || '');
+  const [photoUrl, setPhotoUrl] = useState(user?.photoUrl || '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -20,7 +23,7 @@ const ProfilePage: React.FC = () => {
       toast({ title: 'Erreur', description: 'Les mots de passe ne correspondent pas.', variant: 'destructive' });
       return;
     }
-    await updateProfile({ name, phone, address });
+    await updateProfile({ name, phone, address, photoUrl });
     if (password) {
       const success = await updatePassword(password);
       if (!success) {
@@ -42,6 +45,13 @@ const ProfilePage: React.FC = () => {
       </h2>
       <Card className="border-border/50">
         <CardContent className="pt-6 space-y-4">
+          <div className="flex flex-col items-center gap-3">
+            <Avatar className="h-20 w-20">
+              {photoUrl ? <AvatarImage src={photoUrl} alt={name} /> : null}
+              <AvatarFallback className="text-2xl">{name.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <ImageUpload currentUrl={photoUrl} onUpload={(url) => setPhotoUrl(url)} folder="profiles" />
+          </div>
           <div className="space-y-2">
             <Label>Nom</Label>
             <Input value={name} onChange={e => setName(e.target.value)} />

@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, CreditCard, XCircle, PlayCircle } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, XCircle, PlayCircle } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Product = Tables<'products'>;
@@ -181,17 +183,70 @@ const SalesPage: React.FC = () => {
       setCreditNotes(prev => prev.filter(cn => cn.id !== selectedCreditNoteId));
     }
 
-    setLastSale({ ...sale, lines });
+    const saleData = { ...sale, lines };
+    setLastSale(saleData);
     setCart([]);
     setAmountReceived('');
     setClientId('');
     setSelectedCreditNoteId('');
     toast({ title: 'Vente validée !', description: `Facture ${invoiceNumber} créée.` });
+
+    // Auto-generate PDF invoice
+    generatePdfInvoice(saleData, lines);
+  };
+
+  const generatePdfInvoice = (sale: any, lines: any[]) => {
+    const doc = new jsPDF();
+    const leftMargin = 14;
+
+    // Header
+    if (siteSettings) {
+      doc.setFontSize(16);
+      doc.text(siteSettings.restaurant_name, leftMargin, 20);
+      doc.setFontSize(10);
+      doc.text(siteSettings.address, leftMargin, 27);
+      doc.text(`Tél: ${siteSettings.phone}`, leftMargin, 33);
+    }
+
+    doc.setFontSize(12);
+    doc.text(`Facture: ${sale.invoice_number}`, leftMargin, 45);
+    doc.setFontSize(10);
+    doc.text(`Date: ${new Date(sale.date).toLocaleString('fr-FR')}`, leftMargin, 52);
+    if (sale.client_id) {
+      doc.text(`Client: ${sale.client_id}`, leftMargin, 58);
+    }
+
+    const tableData = lines.map((line: any) => [
+      line.product_name,
+      line.quantity.toString(),
+      `${line.price_ttc.toFixed(0)} FCFA`,
+      `${line.total_ttc.toFixed(0)} FCFA`,
+    ]);
+
+    autoTable(doc, {
+      head: [['Produit', 'Qté', 'Prix Unit. TTC', 'Total TTC']],
+      body: tableData,
+      startY: sale.client_id ? 64 : 58,
+      styles: { halign: 'left', fontSize: 9 },
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(10);
+    doc.text(`Total HT: ${sale.total_ht.toFixed(0)} FCFA`, leftMargin, finalY);
+    doc.setFontSize(12);
+    doc.text(`Total TTC: ${sale.total_ttc.toFixed(0)} FCFA`, leftMargin, finalY + 8);
+    doc.setFontSize(10);
+    doc.text(`Reçu: ${sale.amount_received.toFixed(0)} FCFA`, leftMargin, finalY + 16);
+    doc.text(`Rendu: ${sale.amount_returned.toFixed(0)} FCFA`, leftMargin, finalY + 22);
+    doc.text('Merci de votre visite !', leftMargin, finalY + 34);
+
+    window.open(doc.output('bloburl'), '_blank');
   };
 
   const printReceipt = () => {
     if (!lastSale) return;
-    window.print();
+    generatePdfInvoice(lastSale, lastSale.lines);
   };
 
   const handleOpenDay = async () => {
@@ -356,7 +411,7 @@ const SalesPage: React.FC = () => {
 
             {lastSale && (
               <Button variant="outline" className="w-full" onClick={printReceipt}>
-                <Printer className="h-4 w-4 mr-2" /> Imprimer ticket ({lastSale.invoice_number})
+                Imprimer ticket ({lastSale.invoice_number})
               </Button>
             )}
           </div>
