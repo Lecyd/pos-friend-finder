@@ -175,6 +175,26 @@ const SalesPage: React.FC = () => {
 
     await supabase.from('sale_lines').insert(lines);
 
+    // Decrement stock for each product sold
+    const stockAlerts: string[] = [];
+    for (const item of cart) {
+      const newStock = item.product.stock - item.quantity;
+      await supabase
+        .from('products')
+        .update({ stock: newStock })
+        .eq('id', item.product.id);
+
+      // Update local products state
+      setProducts(prev => prev.map(p =>
+        p.id === item.product.id ? { ...p, stock: newStock } : p
+      ));
+
+      // Check threshold
+      if (newStock <= item.product.stock_threshold) {
+        stockAlerts.push(`${item.product.name} : stock ${newStock} (seuil: ${item.product.stock_threshold})`);
+      }
+    }
+
     if (selectedCreditNoteId) {
       await supabase
         .from('credit_notes')
@@ -190,6 +210,17 @@ const SalesPage: React.FC = () => {
     setClientId('');
     setSelectedCreditNoteId('');
     toast({ title: 'Vente validée !', description: `Facture ${invoiceNumber} créée.` });
+
+    // Show stock alerts
+    if (stockAlerts.length > 0) {
+      for (const alert of stockAlerts) {
+        toast({
+          title: '⚠️ Alerte Stock Bas',
+          description: alert,
+          variant: 'destructive',
+        });
+      }
+    }
 
     // Auto-generate PDF invoice
     generatePdfInvoice(saleData, lines);
