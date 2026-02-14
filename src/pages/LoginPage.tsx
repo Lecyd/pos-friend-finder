@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,19 +12,32 @@ const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const success = await login(email, password);
-    setLoading(false);
-    if (success) {
+    try {
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast({ title: 'Erreur', description: 'Email ou mot de passe incorrect.', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+      // Check if user is active
+      const { data: profile } = await supabase.from('profiles').select('active').eq('id', data.user.id).single();
+      if (profile && !profile.active) {
+        await supabase.auth.signOut();
+        toast({ title: 'Erreur', description: 'Votre compte est désactivé.', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
       toast({ title: 'Connexion réussie', description: 'Bienvenue !' });
       navigate('/dashboard');
-    } else {
-      toast({ title: 'Erreur', description: 'Email ou mot de passe incorrect.', variant: 'destructive' });
+    } catch {
+      toast({ title: 'Erreur', description: 'Une erreur est survenue.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
