@@ -94,7 +94,7 @@ const AppSidebar: React.FC = () => {
         </div>
       </div>
 
-      {dayOpen !== null && (
+      {user.role === 'caissiere' && dayOpen !== null && (
         <div className={cn(
           'mx-3 mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium',
           dayOpen
