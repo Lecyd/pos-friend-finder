@@ -100,6 +100,71 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_roles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      employees: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          nom: string
+          photo_url: string | null
+          prenoms: string
+          role_id: string | null
+          salaire: number
+          telephone: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          nom: string
+          photo_url?: string | null
+          prenoms: string
+          role_id?: string | null
+          salaire?: number
+          telephone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          nom?: string
+          photo_url?: string | null
+          prenoms?: string
+          role_id?: string | null
+          salaire?: number
+          telephone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "employee_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
