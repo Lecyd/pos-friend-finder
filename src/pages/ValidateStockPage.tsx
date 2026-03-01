@@ -24,6 +24,10 @@ const ValidateStockPage: React.FC = () => {
   useEffect(() => { fetchEntries(); }, []);
 
   const handleValidate = async (entryId: string) => {
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    // Update status
     const { error } = await supabase
       .from('stock_entries')
       .update({ status: 'validated', validated_by: user!.id })
@@ -33,7 +37,22 @@ const ValidateStockPage: React.FC = () => {
       toast({ title: 'Erreur', variant: 'destructive' });
       return;
     }
-    toast({ title: 'Stock validé' });
+
+    // Increment product stock
+    const { data: product } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', entry.product_id)
+      .single();
+
+    if (product) {
+      await supabase
+        .from('products')
+        .update({ stock: product.stock + entry.quantity })
+        .eq('id', entry.product_id);
+    }
+
+    toast({ title: 'Stock validé et quantité mise à jour' });
     fetchEntries();
   };
 
