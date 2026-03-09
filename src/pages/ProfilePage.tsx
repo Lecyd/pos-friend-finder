@@ -79,7 +79,40 @@ const ProfilePage: React.FC = () => {
           </div>
           <div className="space-y-2">
             <Label>Téléphone</Label>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+237 ..." />
+            <div className="flex gap-2">
+              <Select value={countryCode} onValueChange={setCountryCode}>
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="+237">🇨🇲 +237</SelectItem>
+                  <SelectItem value="+33">🇫🇷 +33</SelectItem>
+                  <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                  <SelectItem value="+49">🇩🇪 +49</SelectItem>
+                  <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                  <SelectItem value="+39">🇮🇹 +39</SelectItem>
+                  <SelectItem value="+34">🇪🇸 +34</SelectItem>
+                  <SelectItem value="+32">🇧🇪 +32</SelectItem>
+                  <SelectItem value="+41">🇨🇭 +41</SelectItem>
+                  <SelectItem value="+31">🇳🇱 +31</SelectItem>
+                  <SelectItem value="+221">🇸🇳 +221</SelectItem>
+                  <SelectItem value="+223">🇲🇱 +223</SelectItem>
+                  <SelectItem value="+225">🇨🇮 +225</SelectItem>
+                  <SelectItem value="+226">🇧🇫 +226</SelectItem>
+                  <SelectItem value="+228">🇹🇬 +228</SelectItem>
+                  <SelectItem value="+229">🇧🇯 +229</SelectItem>
+                  <SelectItem value="+230">🇲🇺 +230</SelectItem>
+                  <SelectItem value="+235">🇹🇩 +235</SelectItem>
+                  <SelectItem value="+236">🇨🇫 +236</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input 
+                value={phoneNumber} 
+                onChange={e => setPhoneNumber(e.target.value)} 
+                placeholder="6XXXXXXXX"
+                className="flex-1"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Adresse</Label>
