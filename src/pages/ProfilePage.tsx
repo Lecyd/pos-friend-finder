@@ -13,11 +13,26 @@ import ImageUpload from '@/components/ImageUpload';
 const ProfilePage: React.FC = () => {
   const { user, updateProfile, updatePassword } = useAuth();
   const [name, setName] = useState(user?.name || '');
-  const [phone, setPhone] = useState(user?.phone || '');
+  const [countryCode, setCountryCode] = useState('+237');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState(user?.address || '');
   const [photoUrl, setPhotoUrl] = useState(user?.photoUrl || '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Séparer le numéro de téléphone et l'indicatif au chargement
+  React.useEffect(() => {
+    if (user?.phone) {
+      const commonCodes = ['+237', '+33', '+1', '+49', '+44', '+39', '+34', '+32', '+41', '+31', '+221', '+223', '+225', '+226', '+228', '+229', '+230', '+235', '+236'];
+      const foundCode = commonCodes.find(code => user.phone?.startsWith(code));
+      if (foundCode) {
+        setCountryCode(foundCode);
+        setPhoneNumber(user.phone.substring(foundCode.length));
+      } else {
+        setPhoneNumber(user.phone);
+      }
+    }
+  }, [user?.phone]);
 
   const handleSave = async () => {
     if (password && password !== confirmPassword) {
