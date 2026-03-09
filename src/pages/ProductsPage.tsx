@@ -21,10 +21,12 @@ const ProductsPage: React.FC = () => {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [priceHT, setPriceHT] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('0');
   const [tvaRate, setTvaRate] = useState('20');
   const [stock, setStock] = useState('0');
   const [imageUrl, setImageUrl] = useState('');
   const [stockThreshold, setStockThreshold] = useState('0');
+  const [productType, setProductType] = useState('unité');
 
   const fetchData = async () => {
     const [prodRes, catRes] = await Promise.all([

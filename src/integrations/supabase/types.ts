@@ -225,9 +225,11 @@ export type Database = {
           image_url: string | null
           name: string
           price_ht: number
+          purchase_price: number | null
           stock: number
           stock_threshold: number
           tva_rate: number
+          type: string | null
           updated_at: string
         }
         Insert: {
@@ -238,9 +240,11 @@ export type Database = {
           image_url?: string | null
           name: string
           price_ht?: number
+          purchase_price?: number | null
           stock?: number
           stock_threshold?: number
           tva_rate?: number
+          type?: string | null
           updated_at?: string
         }
         Update: {
@@ -251,9 +255,11 @@ export type Database = {
           image_url?: string | null
           name?: string
           price_ht?: number
+          purchase_price?: number | null
           stock?: number
           stock_threshold?: number
           tva_rate?: number
+          type?: string | null
           updated_at?: string
         }
         Relationships: [
