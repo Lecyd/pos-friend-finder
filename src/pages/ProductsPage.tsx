@@ -21,10 +21,12 @@ const ProductsPage: React.FC = () => {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [priceHT, setPriceHT] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('0');
   const [tvaRate, setTvaRate] = useState('20');
   const [stock, setStock] = useState('0');
   const [imageUrl, setImageUrl] = useState('');
   const [stockThreshold, setStockThreshold] = useState('0');
+  const [productType, setProductType] = useState('unité');
 
   const fetchData = async () => {
     const [prodRes, catRes] = await Promise.all([
@@ -42,13 +44,13 @@ const ProductsPage: React.FC = () => {
 
   const openAdd = () => {
     setEditing(null);
-    setName(''); setCategoryId(''); setPriceHT(''); setTvaRate('20'); setStock('0'); setImageUrl(''); setStockThreshold('0');
+    setName(''); setCategoryId(''); setPriceHT(''); setPurchasePrice('0'); setTvaRate('20'); setStock('0'); setImageUrl(''); setStockThreshold('0'); setProductType('unité');
     setOpen(true);
   };
 
   const openEdit = (p: Tables<'products'>) => {
     setEditing(p);
-    setName(p.name); setCategoryId(p.category_id || ''); setPriceHT(String(p.price_ht)); setTvaRate(String(p.tva_rate)); setStock(String(p.stock)); setImageUrl(p.image_url || ''); setStockThreshold(String(p.stock_threshold));
+    setName(p.name); setCategoryId(p.category_id || ''); setPriceHT(String(p.price_ht)); setPurchasePrice(String(p.purchase_price || 0)); setTvaRate(String(p.tva_rate)); setStock(String(p.stock)); setImageUrl(p.image_url || ''); setStockThreshold(String(p.stock_threshold)); setProductType(p.type || 'unité');
     setOpen(true);
   };
 
@@ -61,10 +63,12 @@ const ProductsPage: React.FC = () => {
       name,
       category_id: categoryId,
       price_ht: parseFloat(priceHT),
+      purchase_price: parseFloat(purchasePrice) || 0,
       tva_rate: parseFloat(tvaRate),
       stock: parseInt(stock),
       image_url: imageUrl || null,
       stock_threshold: parseInt(stockThreshold) || 0,
+      type: productType,
     };
 
     if (editing) {
@@ -98,6 +102,8 @@ const ProductsPage: React.FC = () => {
                 <TableHead>Image</TableHead>
                 <TableHead>Nom</TableHead>
                 <TableHead>Catégorie</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-right">Prix Achat</TableHead>
                 <TableHead className="text-right">Prix HT</TableHead>
                 <TableHead className="text-right">TVA</TableHead>
                 <TableHead className="text-right">Prix TTC</TableHead>
@@ -121,6 +127,8 @@ const ProductsPage: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell>{getCategoryName(p.category_id)}</TableCell>
+                    <TableCell>{p.type || 'unité'}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(p.purchase_price || 0)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(p.price_ht)}</TableCell>
                     <TableCell className="text-right">{p.tva_rate}%</TableCell>
                     <TableCell className="text-right font-bold">{formatCurrency(p.price_ht * (1 + p.tva_rate / 100))}</TableCell>
@@ -160,14 +168,27 @@ const ProductsPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select value={productType} onValueChange={setProductType}>
+                <SelectTrigger><SelectValue placeholder="Type..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unité">Unité</SelectItem>
+                  <SelectItem value="caisse">Caisse</SelectItem>
+                  <SelectItem value="mesure">Mesure</SelectItem>
+                  <SelectItem value="kilo">Kilo</SelectItem>
+                  <SelectItem value="litre">Litre</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2"><Label>Prix Achat</Label><Input type="number" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Prix HT (Vente)</Label><Input type="number" value={priceHT} onChange={e => setPriceHT(e.target.value)} /></div>
+            </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2"><Label>Prix HT</Label><Input type="number" value={priceHT} onChange={e => setPriceHT(e.target.value)} /></div>
               <div className="space-y-2"><Label>TVA %</Label><Input type="number" value={tvaRate} onChange={e => setTvaRate(e.target.value)} /></div>
               <div className="space-y-2"><Label>Stock</Label><Input type="number" value={stock} onChange={e => setStock(e.target.value)} /></div>
-            </div>
-            <div className="space-y-2">
-              <Label>Seuil critique d'alerte</Label>
-              <Input type="number" value={stockThreshold} onChange={e => setStockThreshold(e.target.value)} placeholder="0 = pas d'alerte" />
+              <div className="space-y-2"><Label>Seuil alerte</Label><Input type="number" value={stockThreshold} onChange={e => setStockThreshold(e.target.value)} placeholder="0" /></div>
             </div>
             <div className="space-y-2">
               <Label>Image</Label>
