@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { Receipt } from 'lucide-react';
+import ImageUpload from '@/components/ImageUpload';
 import type { Tables } from '@/integrations/supabase/types';
 
 const ExpensesPage: React.FC = () => {
@@ -15,6 +16,7 @@ const ExpensesPage: React.FC = () => {
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
+  const [invoiceUrl, setInvoiceUrl] = useState('');
   const [monthlyExpenses, setMonthlyExpenses] = useState<Tables<'expenses'>[]>([]);
 
   const fetchExpenses = async () => {
@@ -34,8 +36,8 @@ const ExpensesPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!label || !amount || !category) {
-      toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
+    if (!label || !amount || !category || !invoiceUrl) {
+      toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs et ajouter une pièce justificative.', variant: 'destructive' });
       return;
     }
 
@@ -43,6 +45,7 @@ const ExpensesPage: React.FC = () => {
       label,
       amount: parseFloat(amount),
       category,
+      invoice_url: invoiceUrl,
       user_id: user!.id,
     });
 
@@ -54,6 +57,7 @@ const ExpensesPage: React.FC = () => {
     setLabel('');
     setAmount('');
     setCategory('');
+    setInvoiceUrl('');
     fetchExpenses();
     toast({ title: 'Dépense enregistrée' });
   };
@@ -81,6 +85,15 @@ const ExpensesPage: React.FC = () => {
               <div className="space-y-2">
                 <Label>Catégorie</Label>
                 <Input value={category} onChange={e => setCategory(e.target.value)} placeholder="Ex: Fournitures" />
+              </div>
+              <div className="space-y-2">
+                <Label>Pièce justificative *</Label>
+                <ImageUpload
+                  currentUrl={invoiceUrl}
+                  onUpload={setInvoiceUrl}
+                  folder="expense-invoices"
+                  className="w-full"
+                />
               </div>
               <Button type="submit" className="w-full">Enregistrer la dépense</Button>
             </form>
