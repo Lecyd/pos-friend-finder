@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { Package } from 'lucide-react';
+import ImageUpload from '@/components/ImageUpload';
 import type { Tables } from '@/integrations/supabase/types';
 
 const StockEntryPage: React.FC = () => {
@@ -16,6 +17,7 @@ const StockEntryPage: React.FC = () => {
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [supplier, setSupplier] = useState('');
+  const [invoiceUrl, setInvoiceUrl] = useState('');
 
   useEffect(() => {
     supabase.from('products').select('*').eq('active', true).then(({ data }) => {
@@ -25,8 +27,8 @@ const StockEntryPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productId || !quantity || !supplier) {
-      toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
+    if (!productId || !quantity || !supplier || !invoiceUrl) {
+      toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs et ajouter une pièce justificative.', variant: 'destructive' });
       return;
     }
 
@@ -36,6 +38,7 @@ const StockEntryPage: React.FC = () => {
       product_name: product?.name || '',
       quantity: parseInt(quantity),
       supplier,
+      invoice_url: invoiceUrl,
       user_id: user!.id,
     });
 
@@ -47,6 +50,7 @@ const StockEntryPage: React.FC = () => {
     setProductId('');
     setQuantity('');
     setSupplier('');
+    setInvoiceUrl('');
     toast({ title: 'Stock enregistré', description: 'En attente de validation par le manager.' });
   };
 
@@ -76,6 +80,15 @@ const StockEntryPage: React.FC = () => {
             <div className="space-y-2">
               <Label>Fournisseur</Label>
               <Input value={supplier} onChange={e => setSupplier(e.target.value)} placeholder="Nom du fournisseur" />
+            </div>
+            <div className="space-y-2">
+              <Label>Pièce justificative *</Label>
+              <ImageUpload
+                currentUrl={invoiceUrl}
+                onUpload={setInvoiceUrl}
+                folder="stock-invoices"
+                className="w-full"
+              />
             </div>
             <Button type="submit" className="w-full">Enregistrer le stock</Button>
           </form>
