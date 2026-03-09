@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { UserCircle } from 'lucide-react';
@@ -12,18 +13,34 @@ import ImageUpload from '@/components/ImageUpload';
 const ProfilePage: React.FC = () => {
   const { user, updateProfile, updatePassword } = useAuth();
   const [name, setName] = useState(user?.name || '');
-  const [phone, setPhone] = useState(user?.phone || '');
+  const [countryCode, setCountryCode] = useState('+237');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState(user?.address || '');
   const [photoUrl, setPhotoUrl] = useState(user?.photoUrl || '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Séparer le numéro de téléphone et l'indicatif au chargement
+  React.useEffect(() => {
+    if (user?.phone) {
+      const commonCodes = ['+237', '+33', '+1', '+49', '+44', '+39', '+34', '+32', '+41', '+31', '+221', '+223', '+225', '+226', '+228', '+229', '+230', '+235', '+236'];
+      const foundCode = commonCodes.find(code => user.phone?.startsWith(code));
+      if (foundCode) {
+        setCountryCode(foundCode);
+        setPhoneNumber(user.phone.substring(foundCode.length));
+      } else {
+        setPhoneNumber(user.phone);
+      }
+    }
+  }, [user?.phone]);
 
   const handleSave = async () => {
     if (password && password !== confirmPassword) {
       toast({ title: 'Erreur', description: 'Les mots de passe ne correspondent pas.', variant: 'destructive' });
       return;
     }
-    await updateProfile({ name, phone, address, photoUrl });
+    const fullPhone = phoneNumber ? `${countryCode}${phoneNumber}` : '';
+    await updateProfile({ name, phone: fullPhone, address, photoUrl });
     if (password) {
       const success = await updatePassword(password);
       if (!success) {
@@ -62,7 +79,40 @@ const ProfilePage: React.FC = () => {
           </div>
           <div className="space-y-2">
             <Label>Téléphone</Label>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+237 ..." />
+            <div className="flex gap-2">
+              <Select value={countryCode} onValueChange={setCountryCode}>
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="+237">🇨🇲 +237</SelectItem>
+                  <SelectItem value="+33">🇫🇷 +33</SelectItem>
+                  <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                  <SelectItem value="+49">🇩🇪 +49</SelectItem>
+                  <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                  <SelectItem value="+39">🇮🇹 +39</SelectItem>
+                  <SelectItem value="+34">🇪🇸 +34</SelectItem>
+                  <SelectItem value="+32">🇧🇪 +32</SelectItem>
+                  <SelectItem value="+41">🇨🇭 +41</SelectItem>
+                  <SelectItem value="+31">🇳🇱 +31</SelectItem>
+                  <SelectItem value="+221">🇸🇳 +221</SelectItem>
+                  <SelectItem value="+223">🇲🇱 +223</SelectItem>
+                  <SelectItem value="+225">🇨🇮 +225</SelectItem>
+                  <SelectItem value="+226">🇧🇫 +226</SelectItem>
+                  <SelectItem value="+228">🇹🇬 +228</SelectItem>
+                  <SelectItem value="+229">🇧🇯 +229</SelectItem>
+                  <SelectItem value="+230">🇲🇺 +230</SelectItem>
+                  <SelectItem value="+235">🇹🇩 +235</SelectItem>
+                  <SelectItem value="+236">🇨🇫 +236</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input 
+                value={phoneNumber} 
+                onChange={e => setPhoneNumber(e.target.value)} 
+                placeholder="6XXXXXXXX"
+                className="flex-1"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Adresse</Label>
