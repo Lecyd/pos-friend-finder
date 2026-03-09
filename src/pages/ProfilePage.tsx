@@ -13,7 +13,7 @@ import ImageUpload from '@/components/ImageUpload';
 const ProfilePage: React.FC = () => {
   const { user, updateProfile, updatePassword } = useAuth();
   const [name, setName] = useState(user?.name || '');
-  const [countryCode, setCountryCode] = useState('+237');
+  const [countryCode, setCountryCode] = useState('+226');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState(user?.address || '');
   const [photoUrl, setPhotoUrl] = useState(user?.photoUrl || '');
