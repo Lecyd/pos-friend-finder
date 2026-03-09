@@ -39,7 +39,8 @@ const ProfilePage: React.FC = () => {
       toast({ title: 'Erreur', description: 'Les mots de passe ne correspondent pas.', variant: 'destructive' });
       return;
     }
-    await updateProfile({ name, phone, address, photoUrl });
+    const fullPhone = phoneNumber ? `${countryCode}${phoneNumber}` : '';
+    await updateProfile({ name, phone: fullPhone, address, photoUrl });
     if (password) {
       const success = await updatePassword(password);
       if (!success) {
