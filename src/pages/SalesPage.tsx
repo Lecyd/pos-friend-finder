@@ -175,14 +175,14 @@ const SalesPage: React.FC = () => {
 
     await supabase.from('sale_lines').insert(lines);
 
-    // Decrement stock for each product sold
+    // Decrement stock for each product sold (via secure RPC)
     const stockAlerts: string[] = [];
     for (const item of cart) {
       const newStock = item.product.stock - item.quantity;
-      await supabase
-        .from('products')
-        .update({ stock: newStock })
-        .eq('id', item.product.id);
+      await supabase.rpc('decrement_product_stock', {
+        _product_id: item.product.id,
+        _qty: item.quantity,
+      });
 
       // Update local products state
       setProducts(prev => prev.map(p =>
