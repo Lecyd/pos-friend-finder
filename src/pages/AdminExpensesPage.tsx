@@ -94,43 +94,10 @@ const AdminExpensesPage: React.FC = () => {
         </Card>
       </div>
 
-      {dailyExpenses.length === 0 ? (
+      {dailyExpenses.length === 0 && (
         <Card className="border-border/50">
           <CardContent className="py-8 text-center text-muted-foreground">Aucune dépense pour ce mois</CardContent>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          {dailyExpenses.map(day => (
-            <Card key={day.date} className="border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center justify-between">
-                  <span>{day.date}</span>
-                  <span className="text-primary">{formatCurrency(day.total)}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Libellé</TableHead>
-                      <TableHead>Catégorie</TableHead>
-                      <TableHead className="text-right">Montant</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {day.expenses.map(expense => (
-                      <TableRow key={expense.id}>
-                        <TableCell className="font-medium">{expense.label}</TableCell>
-                        <TableCell>{expense.category}</TableCell>
-                        <TableCell className="text-right font-bold">{formatCurrency(expense.amount)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       )}
     </div>
   );
