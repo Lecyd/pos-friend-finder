@@ -268,9 +268,17 @@ const SalesPage: React.FC = () => {
     doc.setFontSize(12);
     doc.text(`Total TTC: ${sale.total_ttc.toFixed(0)} FCFA`, leftMargin, finalY + 8);
     doc.setFontSize(10);
-    doc.text(`Reçu: ${sale.amount_received.toFixed(0)} FCFA`, leftMargin, finalY + 16);
-    doc.text(`Rendu: ${sale.amount_returned.toFixed(0)} FCFA`, leftMargin, finalY + 22);
-    doc.text('Merci de votre visite !', leftMargin, finalY + 34);
+    let cursorY = finalY + 16;
+    if (sale.credit_note_id && sale.credit_note_amount) {
+      doc.text(`Avoir utilisé: -${sale.credit_note_amount.toFixed(0)} FCFA`, leftMargin, cursorY);
+      cursorY += 6;
+      const netDue = Math.max(0, sale.total_ttc - sale.credit_note_amount);
+      doc.text(`Reste à payer: ${netDue.toFixed(0)} FCFA`, leftMargin, cursorY);
+      cursorY += 6;
+    }
+    doc.text(`Reçu: ${sale.amount_received.toFixed(0)} FCFA`, leftMargin, cursorY);
+    doc.text(`Rendu: ${sale.amount_returned.toFixed(0)} FCFA`, leftMargin, cursorY + 6);
+    doc.text('Merci de votre visite !', leftMargin, cursorY + 18);
 
     window.open(doc.output('bloburl'), '_blank');
   };
