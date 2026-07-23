@@ -26,6 +26,8 @@ import AdminExpensesPage from "@/pages/AdminExpensesPage";
 import EmployeesPage from "@/pages/EmployeesPage";
 import EmployeeRolesPage from "@/pages/EmployeeRolesPage";
 import BilanPage from "@/pages/BilanPage";
+import SuppliersPage from "@/pages/SuppliersPage";
+import ExpenseTypesPage from "@/pages/ExpenseTypesPage";
 import NotFound from "@/pages/NotFound";
 
 const RoleBasedRedirect: React.FC = () => {
