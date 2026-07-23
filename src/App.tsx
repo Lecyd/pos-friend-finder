@@ -26,6 +26,8 @@ import AdminExpensesPage from "@/pages/AdminExpensesPage";
 import EmployeesPage from "@/pages/EmployeesPage";
 import EmployeeRolesPage from "@/pages/EmployeeRolesPage";
 import BilanPage from "@/pages/BilanPage";
+import SuppliersPage from "@/pages/SuppliersPage";
+import ExpenseTypesPage from "@/pages/ExpenseTypesPage";
 import NotFound from "@/pages/NotFound";
 
 const RoleBasedRedirect: React.FC = () => {
@@ -68,6 +70,8 @@ const App = () => (
               <Route path="employees" element={<EmployeesPage />} />
               <Route path="employee-roles" element={<EmployeeRolesPage />} />
               <Route path="bilan" element={<BilanPage />} />
+              <Route path="suppliers" element={<SuppliersPage />} />
+              <Route path="expense-types" element={<ExpenseTypesPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

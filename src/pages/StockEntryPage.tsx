@@ -14,6 +14,7 @@ import type { Tables } from '@/integrations/supabase/types';
 const StockEntryPage: React.FC = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState<Tables<'products'>[]>([]);
+  const [suppliers, setSuppliers] = useState<Tables<'suppliers'>[]>([]);
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [supplier, setSupplier] = useState('');
@@ -22,6 +23,9 @@ const StockEntryPage: React.FC = () => {
   useEffect(() => {
     supabase.from('products').select('*').eq('active', true).then(({ data }) => {
       if (data) setProducts(data);
+    });
+    supabase.from('suppliers').select('*').order('name').then(({ data }) => {
+      if (data) setSuppliers(data);
     });
   }, []);
 
@@ -74,12 +78,21 @@ const StockEntryPage: React.FC = () => {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Quantité</Label>
+              <Label>Quantité (en caisse)</Label>
               <Input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Fournisseur</Label>
-              <Input value={supplier} onChange={e => setSupplier(e.target.value)} placeholder="Nom du fournisseur" />
+              <Select value={supplier} onValueChange={setSupplier}>
+                <SelectTrigger>
+                  <SelectValue placeholder={suppliers.length === 0 ? 'Aucun fournisseur — à créer par l\'administrateur' : 'Sélectionner un fournisseur'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers.map(s => (
+                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Pièce justificative *</Label>
