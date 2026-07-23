@@ -203,7 +203,7 @@ const SalesPage: React.FC = () => {
       setCreditNotes(prev => prev.filter(cn => cn.id !== selectedCreditNoteId));
     }
 
-    const saleData = { ...sale, lines };
+    const saleData = { ...sale, lines, credit_note_amount: creditNoteAmount };
     setLastSale(saleData);
     setCart([]);
     setAmountReceived('');
