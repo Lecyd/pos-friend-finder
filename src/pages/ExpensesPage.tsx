@@ -99,8 +99,6 @@ const ExpensesPage: React.FC = () => {
                 <Label>Montant (FCFA)</Label>
                 <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} />
               </div>
-                <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} />
-              </div>
               <div className="space-y-2">
                 <Label>Catégorie</Label>
                 <Input value={category} onChange={e => setCategory(e.target.value)} placeholder="Ex: Fournitures" />
