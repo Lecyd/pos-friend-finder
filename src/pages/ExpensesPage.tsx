@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { Receipt } from 'lucide-react';
@@ -18,6 +19,13 @@ const ExpensesPage: React.FC = () => {
   const [category, setCategory] = useState('');
   const [invoiceUrl, setInvoiceUrl] = useState('');
   const [monthlyExpenses, setMonthlyExpenses] = useState<Tables<'expenses'>[]>([]);
+  const [expenseTypes, setExpenseTypes] = useState<Tables<'expense_types'>[]>([]);
+
+  useEffect(() => {
+    supabase.from('expense_types').select('*').order('label').then(({ data }) => {
+      if (data) setExpenseTypes(data);
+    });
+  }, []);
 
   const fetchExpenses = async () => {
     const now = new Date();
@@ -76,10 +84,21 @@ const ExpensesPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label>Libellé</Label>
-                <Input value={label} onChange={e => setLabel(e.target.value)} placeholder="Ex: Achat ingrédients" />
+                <Select value={label} onValueChange={setLabel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={expenseTypes.length === 0 ? 'Aucun type — à créer par l\'administrateur' : 'Sélectionner un libellé'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {expenseTypes.map(t => (
+                      <SelectItem key={t.id} value={t.label}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Montant (FCFA)</Label>
+                <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} />
+              </div>
                 <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} />
               </div>
               <div className="space-y-2">

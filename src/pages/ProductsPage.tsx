@@ -103,8 +103,8 @@ const ProductsPage: React.FC = () => {
                 <TableHead>Nom</TableHead>
                 <TableHead>Catégorie</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead className="text-right">Prix Achat</TableHead>
-                <TableHead className="text-right">Prix HT</TableHead>
+                <TableHead className="text-right">Prix caisse</TableHead>
+                <TableHead className="text-right">Prix unitaire</TableHead>
                 <TableHead className="text-right">TVA</TableHead>
                 <TableHead className="text-right">Prix TTC</TableHead>
                 <TableHead className="text-right">Stock</TableHead>
@@ -182,8 +182,8 @@ const ProductsPage: React.FC = () => {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label>Prix Achat</Label><Input type="number" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} /></div>
-              <div className="space-y-2"><Label>Prix HT (Vente)</Label><Input type="number" value={priceHT} onChange={e => setPriceHT(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Prix caisse</Label><Input type="number" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Prix unitaire</Label><Input type="number" value={priceHT} onChange={e => setPriceHT(e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2"><Label>TVA %</Label><Input type="number" value={tvaRate} onChange={e => setTvaRate(e.target.value)} /></div>
