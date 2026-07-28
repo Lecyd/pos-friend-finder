@@ -62,7 +62,7 @@ const AppSidebar: React.FC = () => {
     fetchStatus();
 
     const channel = supabase
-      .channel('opening_sale_sidebar')
+      .channel(`opening_sale_sidebar_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'opening_sale' }, (payload: any) => {
         if (payload.new?.user_id === user.id) {
           setDayOpen(payload.new.is_open === true);
