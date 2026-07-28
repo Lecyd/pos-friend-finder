@@ -174,7 +174,12 @@ const ProductsPage: React.FC = () => {
                 <SelectTrigger><SelectValue placeholder="Type..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unité">Unité</SelectItem>
-                  <SelectItem value="caisse">Caisse</SelectItem>
+                  <SelectItem value="Caisse de 12">Caisse de 12</SelectItem>
+                  <SelectItem value="Caisse de 24">Caisse de 24</SelectItem>
+                  <SelectItem value="Pack de 12">Pack de 12</SelectItem>
+                  <SelectItem value="Pack de 6">Pack de 6</SelectItem>
+                  <SelectItem value="Bouteille">Bouteille</SelectItem>
+                  <SelectItem value="Carton">Carton</SelectItem>
                   <SelectItem value="mesure">Mesure</SelectItem>
                   <SelectItem value="kilo">Kilo</SelectItem>
                   <SelectItem value="litre">Litre</SelectItem>
