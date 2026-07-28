@@ -59,17 +59,37 @@ async function fetchAppUser(supabaseUser: SupabaseUser): Promise<AppUser | null>
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AppUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!isMounted) return;
+      setSession(newSession);
+      if (newSession?.user) {
+        setLoading(true);
+        setTimeout(async () => {
+          const appUser = await fetchAppUser(newSession.user);
+          if (isMounted) {
+            setUser(appUser);
+            setLoading(false);
+          }
+        }, 0);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session: existing } } = await supabase.auth.getSession();
         if (!isMounted) return;
-        if (session?.user) {
-          const appUser = await fetchAppUser(session.user);
+        setSession(existing);
+        if (existing?.user) {
+          const appUser = await fetchAppUser(existing.user);
           if (isMounted) setUser(appUser);
         }
       } catch (error) {
@@ -81,23 +101,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!isMounted) return;
-      if (session?.user) {
-        setTimeout(async () => {
-          const appUser = await fetchAppUser(session.user);
-          if (isMounted) setUser(appUser);
-        }, 0);
-      } else {
-        setUser(null);
-      }
-    });
-
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
+
 
   const login = useCallback(async (email: string, password: string) => {
     const { error, data } = await supabase.auth.signInWithPassword({ email, password });
