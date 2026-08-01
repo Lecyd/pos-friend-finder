@@ -14,6 +14,8 @@ const SettingsPage: React.FC = () => {
   const [restaurantName, setRestaurantName] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [phone2, setPhone2] = useState('');
+  const [phone3, setPhone3] = useState('');
   const [defaultTvaRate, setDefaultTvaRate] = useState('');
   const [currency, setCurrency] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
