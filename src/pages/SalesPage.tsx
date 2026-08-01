@@ -504,12 +504,13 @@ const SalesPage: React.FC = () => {
           <div className="text-center mb-4">
             <p className="font-bold text-lg">{siteSettings.restaurant_name}</p>
             <p>{siteSettings.address}</p>
-            <p>Tél: {siteSettings.phone}</p>
+            <p>Tél: {[siteSettings.phone, (siteSettings as any).phone2, (siteSettings as any).phone3].filter(Boolean).join(' / ')}</p>
             <p>────────────────────────</p>
           </div>
           <p>Facture: {lastSale.invoice_number}</p>
           <p>Date: {new Date(lastSale.date).toLocaleString('fr-FR')}</p>
           {lastSale.client_id && <p>Client: {lastSale.client_id}</p>}
+          {lastSale.server_name && <p>Serveur/Serveuse: {lastSale.server_name}</p>}
           <p>────────────────────────</p>
           {lastSale.lines?.map((line: any, i: number) => (
             <div key={i}>
