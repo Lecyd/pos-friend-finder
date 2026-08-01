@@ -203,12 +203,17 @@ const SalesPage: React.FC = () => {
       }
     }
 
-    if (selectedCreditNoteId) {
-      await supabase
+    if (creditNoteId) {
+      const { error: cnError } = await supabase
         .from('credit_notes')
         .update({ used: true, used_in_sale_id: sale.id })
-        .eq('id', selectedCreditNoteId);
-      setCreditNotes(prev => prev.filter(cn => cn.id !== selectedCreditNoteId));
+        .eq('id', creditNoteId);
+      if (cnError) {
+        toast({ title: 'Attention', description: "L'avoir n'a pas pu être marqué comme utilisé.", variant: 'destructive' });
+      } else {
+        toast({ title: 'Ticket Avoir utilisé', description: 'Son statut est passé de « Disponible » à « Utilisé ».' });
+      }
+      setCreditNotes(prev => prev.filter(cn => cn.id !== creditNoteId));
     }
 
     const saleData = { ...sale, lines, credit_note_amount: creditNoteAmount };
@@ -217,6 +222,7 @@ const SalesPage: React.FC = () => {
     setAmountReceived('');
     setClientId('');
     setSelectedCreditNoteId('');
+    setSelectedServerId('');
     toast({ title: 'Vente validée !', description: `Facture ${invoiceNumber} créée.` });
 
     // Show stock alerts
