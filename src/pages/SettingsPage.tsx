@@ -76,8 +76,18 @@ const SettingsPage: React.FC = () => {
             <Input value={address} onChange={e => setAddress(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Téléphone</Label>
+            <Label>Téléphone 1</Label>
             <Input value={phone} onChange={e => setPhone(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Téléphone 2</Label>
+              <Input value={phone2} onChange={e => setPhone2(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Téléphone 3</Label>
+              <Input value={phone3} onChange={e => setPhone3(e.target.value)} />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
