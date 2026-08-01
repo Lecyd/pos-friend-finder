@@ -27,6 +27,8 @@ const SettingsPage: React.FC = () => {
         setRestaurantName(data.restaurant_name);
         setAddress(data.address);
         setPhone(data.phone);
+        setPhone2((data as any).phone2 || '');
+        setPhone3((data as any).phone3 || '');
         setDefaultTvaRate(String(data.default_tva_rate));
         setCurrency(data.currency);
         setLogoUrl(data.logo_url || '');
@@ -40,6 +42,8 @@ const SettingsPage: React.FC = () => {
       restaurant_name: restaurantName,
       address,
       phone,
+      phone2,
+      phone3,
       default_tva_rate: parseFloat(defaultTvaRate),
       currency,
       logo_url: logoUrl || null,
