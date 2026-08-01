@@ -142,6 +142,8 @@ const SalesPage: React.FC = () => {
     }
 
     const invoiceNumber = `FAC-${Date.now().toString(36).toUpperCase()}`;
+    const creditNoteId = selectedCreditNoteId && selectedCreditNoteId !== 'none' ? selectedCreditNoteId : null;
+    const server = servers.find(s => s.id === selectedServerId);
 
     const { data: sale, error: saleError } = await supabase
       .from('sales')
@@ -152,7 +154,9 @@ const SalesPage: React.FC = () => {
         total_ttc: cartTotals.totalTTC,
         amount_received: received,
         amount_returned: amountReturned,
-        credit_note_id: selectedCreditNoteId || null,
+        credit_note_id: creditNoteId,
+        server_employee_id: server?.id ?? null,
+        server_name: server ? `${server.nom} ${server.prenoms}` : null,
         user_id: user!.id,
       })
       .select()
