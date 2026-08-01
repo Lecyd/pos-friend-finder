@@ -390,6 +390,8 @@ export type Database = {
           date: string
           id: string
           invoice_number: string
+          server_employee_id: string | null
+          server_name: string | null
           status: string
           total_ht: number
           total_ttc: number
@@ -404,6 +406,8 @@ export type Database = {
           date?: string
           id?: string
           invoice_number: string
+          server_employee_id?: string | null
+          server_name?: string | null
           status?: string
           total_ht?: number
           total_ttc?: number
@@ -418,12 +422,22 @@ export type Database = {
           date?: string
           id?: string
           invoice_number?: string
+          server_employee_id?: string | null
+          server_name?: string | null
           status?: string
           total_ht?: number
           total_ttc?: number
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_server_employee_id_fkey"
+            columns: ["server_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_settings: {
         Row: {
@@ -433,6 +447,8 @@ export type Database = {
           id: string
           logo_url: string | null
           phone: string
+          phone2: string
+          phone3: string
           restaurant_name: string
         }
         Insert: {
@@ -442,6 +458,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           phone?: string
+          phone2?: string
+          phone3?: string
           restaurant_name?: string
         }
         Update: {
@@ -451,6 +469,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           phone?: string
+          phone2?: string
+          phone3?: string
           restaurant_name?: string
         }
         Relationships: []
@@ -562,6 +582,21 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      list_active_employees: {
+        Args: never
+        Returns: {
+          id: string
+          nom: string
+          prenoms: string
+        }[]
+      }
+      list_suppliers: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
       }
     }
     Enums: {

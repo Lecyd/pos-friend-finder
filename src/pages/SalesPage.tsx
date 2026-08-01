@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, XCircle, PlayCircle } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, XCircle, PlayCircle, UserRound } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Tables } from '@/integrations/supabase/types';
@@ -33,6 +33,8 @@ const SalesPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
+  const [servers, setServers] = useState<{ id: string; nom: string; prenoms: string }[]>([]);
+  const [selectedServerId, setSelectedServerId] = useState<string>('');
   const [siteSettings, setSiteSettings] = useState<Tables<'site_settings'> | null>(null);
   const [dayOpen, setDayOpen] = useState(false);
   const [checkingDay, setCheckingDay] = useState(true);
@@ -51,16 +53,18 @@ const SalesPage: React.FC = () => {
     };
 
     const fetchData = async () => {
-      const [prodRes, catRes, cnRes, settingsRes] = await Promise.all([
+      const [prodRes, catRes, cnRes, settingsRes, empRes] = await Promise.all([
         supabase.from('products').select('*').eq('active', true),
         supabase.from('categories').select('*'),
         supabase.from('credit_notes').select('*').eq('used', false),
         supabase.from('site_settings').select('*').limit(1).single(),
+        supabase.rpc('list_active_employees'),
       ]);
       if (prodRes.data) setProducts(prodRes.data);
       if (catRes.data) setCategories(catRes.data);
       if (cnRes.data) setCreditNotes(cnRes.data);
       if (settingsRes.data) setSiteSettings(settingsRes.data);
+      if (empRes.data) setServers(empRes.data as { id: string; nom: string; prenoms: string }[]);
     };
 
     checkDayStatus();
@@ -138,6 +142,8 @@ const SalesPage: React.FC = () => {
     }
 
     const invoiceNumber = `FAC-${Date.now().toString(36).toUpperCase()}`;
+    const creditNoteId = selectedCreditNoteId && selectedCreditNoteId !== 'none' ? selectedCreditNoteId : null;
+    const server = servers.find(s => s.id === selectedServerId);
 
     const { data: sale, error: saleError } = await supabase
       .from('sales')
@@ -148,7 +154,9 @@ const SalesPage: React.FC = () => {
         total_ttc: cartTotals.totalTTC,
         amount_received: received,
         amount_returned: amountReturned,
-        credit_note_id: selectedCreditNoteId || null,
+        credit_note_id: creditNoteId,
+        server_employee_id: server?.id ?? null,
+        server_name: server ? `${server.nom} ${server.prenoms}` : null,
         user_id: user!.id,
       })
       .select()
@@ -195,12 +203,17 @@ const SalesPage: React.FC = () => {
       }
     }
 
-    if (selectedCreditNoteId) {
-      await supabase
+    if (creditNoteId) {
+      const { error: cnError } = await supabase
         .from('credit_notes')
         .update({ used: true, used_in_sale_id: sale.id })
-        .eq('id', selectedCreditNoteId);
-      setCreditNotes(prev => prev.filter(cn => cn.id !== selectedCreditNoteId));
+        .eq('id', creditNoteId);
+      if (cnError) {
+        toast({ title: 'Attention', description: "L'avoir n'a pas pu être marqué comme utilisé.", variant: 'destructive' });
+      } else {
+        toast({ title: 'Ticket Avoir utilisé', description: 'Son statut est passé de « Disponible » à « Utilisé ».' });
+      }
+      setCreditNotes(prev => prev.filter(cn => cn.id !== creditNoteId));
     }
 
     const saleData = { ...sale, lines, credit_note_amount: creditNoteAmount };
@@ -209,6 +222,7 @@ const SalesPage: React.FC = () => {
     setAmountReceived('');
     setClientId('');
     setSelectedCreditNoteId('');
+    setSelectedServerId('');
     toast({ title: 'Vente validée !', description: `Facture ${invoiceNumber} créée.` });
 
     // Show stock alerts
@@ -231,20 +245,33 @@ const SalesPage: React.FC = () => {
     const leftMargin = 14;
 
     // Header
+    let headerY = 20;
     if (siteSettings) {
       doc.setFontSize(16);
-      doc.text(siteSettings.restaurant_name, leftMargin, 20);
+      doc.text(siteSettings.restaurant_name, leftMargin, headerY);
       doc.setFontSize(10);
-      doc.text(siteSettings.address, leftMargin, 27);
-      doc.text(`Tél: ${siteSettings.phone}`, leftMargin, 33);
+      headerY += 7;
+      doc.text(siteSettings.address, leftMargin, headerY);
+      const phones = [siteSettings.phone, (siteSettings as any).phone2, (siteSettings as any).phone3].filter(Boolean);
+      if (phones.length > 0) {
+        headerY += 6;
+        doc.text(`Tél: ${phones.join(' / ')}`, leftMargin, headerY);
+      }
     }
 
+    let infoY = headerY + 12;
     doc.setFontSize(12);
-    doc.text(`Facture: ${sale.invoice_number}`, leftMargin, 45);
+    doc.text(`Facture: ${sale.invoice_number}`, leftMargin, infoY);
     doc.setFontSize(10);
-    doc.text(`Date: ${new Date(sale.date).toLocaleString('fr-FR')}`, leftMargin, 52);
+    infoY += 7;
+    doc.text(`Date: ${new Date(sale.date).toLocaleString('fr-FR')}`, leftMargin, infoY);
     if (sale.client_id) {
-      doc.text(`Client: ${sale.client_id}`, leftMargin, 58);
+      infoY += 6;
+      doc.text(`Client: ${sale.client_id}`, leftMargin, infoY);
+    }
+    if (sale.server_name) {
+      infoY += 6;
+      doc.text(`Serveur/Serveuse: ${sale.server_name}`, leftMargin, infoY);
     }
 
     const tableData = lines.map((line: any) => [
@@ -257,7 +284,7 @@ const SalesPage: React.FC = () => {
     autoTable(doc, {
       head: [['Produit', 'Qté', 'Prix Unit. TTC', 'Total TTC']],
       body: tableData,
-      startY: sale.client_id ? 64 : 58,
+      startY: infoY + 6,
       styles: { halign: 'left', fontSize: 9 },
       headStyles: { fillColor: [41, 128, 185] },
     });
@@ -436,6 +463,21 @@ const SalesPage: React.FC = () => {
               </>
             )}
 
+            {servers.length > 0 && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium flex items-center gap-1"><UserRound className="h-3 w-3" /> Serveur/Serveuse (optionnel)</label>
+                <Select value={selectedServerId} onValueChange={v => setSelectedServerId(v === 'none' ? '' : v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Qui a pris la commande ?" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Aucun</SelectItem>
+                    {servers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.nom} {s.prenoms}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <Input placeholder="ID Client (optionnel)" value={clientId} onChange={e => setClientId(e.target.value)} />
             <Input type="number" placeholder="Somme reçue" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} />
 
@@ -462,12 +504,13 @@ const SalesPage: React.FC = () => {
           <div className="text-center mb-4">
             <p className="font-bold text-lg">{siteSettings.restaurant_name}</p>
             <p>{siteSettings.address}</p>
-            <p>Tél: {siteSettings.phone}</p>
+            <p>Tél: {[siteSettings.phone, (siteSettings as any).phone2, (siteSettings as any).phone3].filter(Boolean).join(' / ')}</p>
             <p>────────────────────────</p>
           </div>
           <p>Facture: {lastSale.invoice_number}</p>
           <p>Date: {new Date(lastSale.date).toLocaleString('fr-FR')}</p>
           {lastSale.client_id && <p>Client: {lastSale.client_id}</p>}
+          {lastSale.server_name && <p>Serveur/Serveuse: {lastSale.server_name}</p>}
           <p>────────────────────────</p>
           {lastSale.lines?.map((line: any, i: number) => (
             <div key={i}>

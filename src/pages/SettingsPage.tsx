@@ -14,6 +14,8 @@ const SettingsPage: React.FC = () => {
   const [restaurantName, setRestaurantName] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [phone2, setPhone2] = useState('');
+  const [phone3, setPhone3] = useState('');
   const [defaultTvaRate, setDefaultTvaRate] = useState('');
   const [currency, setCurrency] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
@@ -25,6 +27,8 @@ const SettingsPage: React.FC = () => {
         setRestaurantName(data.restaurant_name);
         setAddress(data.address);
         setPhone(data.phone);
+        setPhone2((data as any).phone2 || '');
+        setPhone3((data as any).phone3 || '');
         setDefaultTvaRate(String(data.default_tva_rate));
         setCurrency(data.currency);
         setLogoUrl(data.logo_url || '');
@@ -38,6 +42,8 @@ const SettingsPage: React.FC = () => {
       restaurant_name: restaurantName,
       address,
       phone,
+      phone2,
+      phone3,
       default_tva_rate: parseFloat(defaultTvaRate),
       currency,
       logo_url: logoUrl || null,
@@ -70,8 +76,18 @@ const SettingsPage: React.FC = () => {
             <Input value={address} onChange={e => setAddress(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Téléphone</Label>
+            <Label>Téléphone 1</Label>
             <Input value={phone} onChange={e => setPhone(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Téléphone 2</Label>
+              <Input value={phone2} onChange={e => setPhone2(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Téléphone 3</Label>
+              <Input value={phone3} onChange={e => setPhone3(e.target.value)} />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
