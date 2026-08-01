@@ -245,20 +245,33 @@ const SalesPage: React.FC = () => {
     const leftMargin = 14;
 
     // Header
+    let headerY = 20;
     if (siteSettings) {
       doc.setFontSize(16);
-      doc.text(siteSettings.restaurant_name, leftMargin, 20);
+      doc.text(siteSettings.restaurant_name, leftMargin, headerY);
       doc.setFontSize(10);
-      doc.text(siteSettings.address, leftMargin, 27);
-      doc.text(`Tél: ${siteSettings.phone}`, leftMargin, 33);
+      headerY += 7;
+      doc.text(siteSettings.address, leftMargin, headerY);
+      const phones = [siteSettings.phone, (siteSettings as any).phone2, (siteSettings as any).phone3].filter(Boolean);
+      if (phones.length > 0) {
+        headerY += 6;
+        doc.text(`Tél: ${phones.join(' / ')}`, leftMargin, headerY);
+      }
     }
 
+    let infoY = headerY + 12;
     doc.setFontSize(12);
-    doc.text(`Facture: ${sale.invoice_number}`, leftMargin, 45);
+    doc.text(`Facture: ${sale.invoice_number}`, leftMargin, infoY);
     doc.setFontSize(10);
-    doc.text(`Date: ${new Date(sale.date).toLocaleString('fr-FR')}`, leftMargin, 52);
+    infoY += 7;
+    doc.text(`Date: ${new Date(sale.date).toLocaleString('fr-FR')}`, leftMargin, infoY);
     if (sale.client_id) {
-      doc.text(`Client: ${sale.client_id}`, leftMargin, 58);
+      infoY += 6;
+      doc.text(`Client: ${sale.client_id}`, leftMargin, infoY);
+    }
+    if (sale.server_name) {
+      infoY += 6;
+      doc.text(`Serveur/Serveuse: ${sale.server_name}`, leftMargin, infoY);
     }
 
     const tableData = lines.map((line: any) => [
@@ -271,7 +284,7 @@ const SalesPage: React.FC = () => {
     autoTable(doc, {
       head: [['Produit', 'Qté', 'Prix Unit. TTC', 'Total TTC']],
       body: tableData,
-      startY: sale.client_id ? 64 : 58,
+      startY: infoY + 6,
       styles: { halign: 'left', fontSize: 9 },
       headStyles: { fillColor: [41, 128, 185] },
     });
