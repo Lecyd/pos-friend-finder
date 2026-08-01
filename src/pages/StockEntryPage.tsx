@@ -14,7 +14,7 @@ import type { Tables } from '@/integrations/supabase/types';
 const StockEntryPage: React.FC = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState<Tables<'products'>[]>([]);
-  const [suppliers, setSuppliers] = useState<Tables<'suppliers'>[]>([]);
+  const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [supplier, setSupplier] = useState('');
@@ -24,8 +24,8 @@ const StockEntryPage: React.FC = () => {
     supabase.from('products').select('*').eq('active', true).then(({ data }) => {
       if (data) setProducts(data);
     });
-    supabase.from('suppliers').select('*').order('name').then(({ data }) => {
-      if (data) setSuppliers(data);
+    supabase.rpc('list_suppliers').then(({ data }) => {
+      if (data) setSuppliers(data as { id: string; name: string }[]);
     });
   }, []);
 
