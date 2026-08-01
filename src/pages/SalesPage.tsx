@@ -33,6 +33,8 @@ const SalesPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
+  const [servers, setServers] = useState<{ id: string; nom: string; prenoms: string }[]>([]);
+  const [selectedServerId, setSelectedServerId] = useState<string>('');
   const [siteSettings, setSiteSettings] = useState<Tables<'site_settings'> | null>(null);
   const [dayOpen, setDayOpen] = useState(false);
   const [checkingDay, setCheckingDay] = useState(true);
