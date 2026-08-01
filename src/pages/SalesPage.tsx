@@ -463,6 +463,21 @@ const SalesPage: React.FC = () => {
               </>
             )}
 
+            {servers.length > 0 && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium flex items-center gap-1"><UserRound className="h-3 w-3" /> Serveur/Serveuse (optionnel)</label>
+                <Select value={selectedServerId} onValueChange={v => setSelectedServerId(v === 'none' ? '' : v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Qui a pris la commande ?" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Aucun</SelectItem>
+                    {servers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.nom} {s.prenoms}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <Input placeholder="ID Client (optionnel)" value={clientId} onChange={e => setClientId(e.target.value)} />
             <Input type="number" placeholder="Somme reçue" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} />
 
