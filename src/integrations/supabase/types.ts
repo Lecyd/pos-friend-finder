@@ -591,6 +591,13 @@ export type Database = {
           prenoms: string
         }[]
       }
+      list_suppliers: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
     }
     Enums: {
       app_role: "caissiere" | "manager" | "admin"
