@@ -14,7 +14,7 @@ import type { Tables } from '@/integrations/supabase/types';
 
 type Product = Tables<'products'>;
 type Category = Tables<'categories'>;
-type CreditNote = Tables<'credit_notes'>;
+type CreditNote = { id: string; amount: number; date: string };
 
 interface CartItem {
   product: Product;
