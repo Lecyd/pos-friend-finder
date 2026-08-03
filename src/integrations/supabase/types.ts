@@ -572,6 +572,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      attach_credit_note_to_sale: {
+        Args: { _credit_note_id: string; _sale_id: string }
+        Returns: undefined
+      }
       decrement_product_stock: {
         Args: { _product_id: string; _qty: number }
         Returns: undefined
@@ -591,6 +595,14 @@ export type Database = {
           prenoms: string
         }[]
       }
+      list_available_credit_notes: {
+        Args: never
+        Returns: {
+          amount: number
+          date: string
+          id: string
+        }[]
+      }
       list_suppliers: {
         Args: never
         Returns: {
@@ -599,7 +611,7 @@ export type Database = {
         }[]
       }
       mark_credit_note_used: {
-        Args: { _credit_note_id: string; _sale_id: string }
+        Args: { _credit_note_id: string; _sale_id?: string }
         Returns: undefined
       }
     }
