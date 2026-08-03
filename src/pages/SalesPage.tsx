@@ -154,7 +154,7 @@ const SalesPage: React.FC = () => {
       toast({ title: 'Erreur', description: 'Saisissez le montant du nouveau avoir.', variant: 'destructive' });
       return;
     }
-    if (generateCreditNote && newCreditAmount > received - amountDue) {
+    if (generateCreditNote && !deferredPayment && newCreditAmount > received - amountDue) {
       toast({ title: 'Erreur', description: 'Le nouveau avoir dépasse le surplus encaissé.', variant: 'destructive' });
       return;
     }
