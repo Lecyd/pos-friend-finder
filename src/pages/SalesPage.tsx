@@ -456,7 +456,7 @@ const SalesPage: React.FC = () => {
                     <SelectItem value="none">Aucun</SelectItem>
                     {creditNotes.map(cn => (
                       <SelectItem key={cn.id} value={cn.id}>
-                        {formatCurrency(cn.amount)} — {new Date(cn.date).toLocaleDateString('fr-FR')} {cn.client_id ? `(${cn.client_id})` : ''}
+                        {formatCurrency(cn.amount)} — {new Date(cn.date).toLocaleDateString('fr-FR')}
                       </SelectItem>
                     ))}
                   </SelectContent>
