@@ -14,7 +14,7 @@ import type { Tables } from '@/integrations/supabase/types';
 
 type Product = Tables<'products'>;
 type Category = Tables<'categories'>;
-type CreditNote = Tables<'credit_notes'>;
+type CreditNote = { id: string; amount: number; date: string };
 
 interface CartItem {
   product: Product;
@@ -56,13 +56,13 @@ const SalesPage: React.FC = () => {
       const [prodRes, catRes, cnRes, settingsRes, empRes] = await Promise.all([
         supabase.from('products').select('*').eq('active', true),
         supabase.from('categories').select('*'),
-        supabase.from('credit_notes').select('*').eq('used', false),
+        supabase.rpc('list_available_credit_notes'),
         supabase.from('site_settings').select('*').limit(1).single(),
         supabase.rpc('list_active_employees'),
       ]);
       if (prodRes.data) setProducts(prodRes.data);
       if (catRes.data) setCategories(catRes.data);
-      if (cnRes.data) setCreditNotes(cnRes.data);
+      if (cnRes.data) setCreditNotes(cnRes.data as CreditNote[]);
       if (settingsRes.data) setSiteSettings(settingsRes.data);
       if (empRes.data) setServers(empRes.data as { id: string; nom: string; prenoms: string }[]);
     };
@@ -145,6 +145,23 @@ const SalesPage: React.FC = () => {
     const creditNoteId = selectedCreditNoteId && selectedCreditNoteId !== 'none' ? selectedCreditNoteId : null;
     const server = servers.find(s => s.id === selectedServerId);
 
+    // Reserve the credit note atomically BEFORE creating the sale.
+    if (creditNoteId) {
+      const { error: cnError } = await supabase.rpc('mark_credit_note_used', {
+        _credit_note_id: creditNoteId,
+      });
+      if (cnError) {
+        setCreditNotes(prev => prev.filter(cn => cn.id !== creditNoteId));
+        setSelectedCreditNoteId('');
+        toast({
+          title: 'Ticket Avoir invalide',
+          description: 'Cet avoir a déjà été utilisé. La vente a été annulée.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const { data: sale, error: saleError } = await supabase
       .from('sales')
       .insert({
@@ -204,17 +221,14 @@ const SalesPage: React.FC = () => {
     }
 
     if (creditNoteId) {
-      const { error: cnError } = await supabase.rpc('mark_credit_note_used', {
+      await supabase.rpc('attach_credit_note_to_sale', {
         _credit_note_id: creditNoteId,
         _sale_id: sale.id,
       });
-      if (cnError) {
-        toast({ title: 'Attention', description: "L'avoir n'a pas pu être marqué comme utilisé.", variant: 'destructive' });
-      } else {
-        toast({ title: 'Ticket Avoir utilisé', description: 'Son statut est passé de « Disponible » à « Utilisé ».' });
-      }
+      toast({ title: 'Ticket Avoir utilisé', description: 'Son statut est passé de « Disponible » à « Utilisé ».' });
       setCreditNotes(prev => prev.filter(cn => cn.id !== creditNoteId));
     }
+
 
     const saleData = { ...sale, lines, credit_note_amount: creditNoteAmount };
     setLastSale(saleData);
@@ -442,7 +456,7 @@ const SalesPage: React.FC = () => {
                     <SelectItem value="none">Aucun</SelectItem>
                     {creditNotes.map(cn => (
                       <SelectItem key={cn.id} value={cn.id}>
-                        {formatCurrency(cn.amount)} — {new Date(cn.date).toLocaleDateString('fr-FR')} {cn.client_id ? `(${cn.client_id})` : ''}
+                        {formatCurrency(cn.amount)} — {new Date(cn.date).toLocaleDateString('fr-FR')}
                       </SelectItem>
                     ))}
                   </SelectContent>
