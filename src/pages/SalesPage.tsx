@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, XCircle, PlayCircle, UserRound } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -30,6 +31,9 @@ const SalesPage: React.FC = () => {
   const [amountReceived, setAmountReceived] = useState('');
   const [lastSale, setLastSale] = useState<any>(null);
   const [selectedCreditNoteId, setSelectedCreditNoteId] = useState<string>('');
+  const [deferredPayment, setDeferredPayment] = useState(false);
+  const [generateCreditNote, setGenerateCreditNote] = useState(false);
+  const [newCreditNoteAmount, setNewCreditNoteAmount] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
@@ -111,6 +115,9 @@ const SalesPage: React.FC = () => {
     setAmountReceived('');
     setClientId('');
     setSelectedCreditNoteId('');
+    setDeferredPayment(false);
+    setGenerateCreditNote(false);
+    setNewCreditNoteAmount('');
     toast({ title: 'Panier vidé' });
   };
 
@@ -123,12 +130,15 @@ const SalesPage: React.FC = () => {
     return { totalHT, totalTTC };
   }, [cart]);
 
+  const newCreditAmount = generateCreditNote ? (parseFloat(newCreditNoteAmount) || 0) : 0;
+
   const amountDue = Math.max(0, cartTotals.totalTTC - creditNoteAmount);
 
+  // Monnaie à rendre = Somme reçue - Total TTC + Avoir utilisé - Nouveau avoir généré
   const amountReturned = useMemo(() => {
     const received = parseFloat(amountReceived) || 0;
-    return Math.max(0, received - amountDue);
-  }, [amountReceived, amountDue]);
+    return Math.max(0, received - cartTotals.totalTTC + creditNoteAmount - newCreditAmount);
+  }, [amountReceived, cartTotals.totalTTC, creditNoteAmount, newCreditAmount]);
 
   const validateSale = async () => {
     if (cart.length === 0) {
@@ -136,10 +146,19 @@ const SalesPage: React.FC = () => {
       return;
     }
     const received = parseFloat(amountReceived) || 0;
-    if (received < amountDue) {
+    if (!deferredPayment && received < amountDue) {
       toast({ title: 'Erreur', description: 'La somme reçue est insuffisante.', variant: 'destructive' });
       return;
     }
+    if (generateCreditNote && newCreditAmount <= 0) {
+      toast({ title: 'Erreur', description: 'Saisissez le montant du nouveau avoir.', variant: 'destructive' });
+      return;
+    }
+    if (generateCreditNote && !deferredPayment && newCreditAmount > received - amountDue) {
+      toast({ title: 'Erreur', description: 'Le nouveau avoir dépasse le surplus encaissé.', variant: 'destructive' });
+      return;
+    }
+
 
     const invoiceNumber = `FAC-${Date.now().toString(36).toUpperCase()}`;
     const creditNoteId = selectedCreditNoteId && selectedCreditNoteId !== 'none' ? selectedCreditNoteId : null;
@@ -172,6 +191,7 @@ const SalesPage: React.FC = () => {
         amount_received: received,
         amount_returned: amountReturned,
         credit_note_id: creditNoteId,
+        status: deferredPayment ? 'deferred' : 'completed',
         server_employee_id: server?.id ?? null,
         server_name: server ? `${server.nom} ${server.prenoms}` : null,
         user_id: user!.id,
@@ -230,14 +250,48 @@ const SalesPage: React.FC = () => {
     }
 
 
-    const saleData = { ...sale, lines, credit_note_amount: creditNoteAmount };
+    // Generate a new credit note if requested
+    let createdCreditNote: { id: string; amount: number } | null = null;
+    if (generateCreditNote && newCreditAmount > 0) {
+      const { data: cn, error: cnErr } = await supabase
+        .from('credit_notes')
+        .insert({
+          amount: newCreditAmount,
+          client_id: clientId || null,
+          created_by: user!.id,
+        })
+        .select('id, amount, date')
+        .single();
+      if (cnErr || !cn) {
+        toast({ title: 'Erreur', description: 'Le nouveau ticket avoir n\'a pas pu être créé.', variant: 'destructive' });
+      } else {
+        createdCreditNote = { id: cn.id, amount: Number(cn.amount) };
+        setCreditNotes(prev => [{ id: cn.id, amount: Number(cn.amount), date: cn.date }, ...prev]);
+        toast({ title: 'Nouveau Ticket Avoir créé', description: `${newCreditAmount.toFixed(0)} FCFA disponible.` });
+      }
+    }
+
+    const saleData = {
+      ...sale,
+      lines,
+      credit_note_amount: creditNoteAmount,
+      new_credit_amount: createdCreditNote?.amount ?? 0,
+      deferred: deferredPayment,
+    };
     setLastSale(saleData);
     setCart([]);
     setAmountReceived('');
     setClientId('');
     setSelectedCreditNoteId('');
     setSelectedServerId('');
-    toast({ title: 'Vente validée !', description: `Facture ${invoiceNumber} créée.` });
+    setDeferredPayment(false);
+    setGenerateCreditNote(false);
+    setNewCreditNoteAmount('');
+    toast({
+      title: deferredPayment ? 'Vente enregistrée (paiement différé)' : 'Vente validée !',
+      description: `Facture ${invoiceNumber} créée.`,
+    });
+
 
     // Show stock alerts
     if (stockAlerts.length > 0) {
@@ -318,8 +372,18 @@ const SalesPage: React.FC = () => {
       cursorY += 6;
     }
     doc.text(`Reçu: ${sale.amount_received.toFixed(0)} FCFA`, leftMargin, cursorY);
-    doc.text(`Rendu: ${sale.amount_returned.toFixed(0)} FCFA`, leftMargin, cursorY + 6);
-    doc.text('Merci de votre visite !', leftMargin, cursorY + 18);
+    cursorY += 6;
+    if (sale.new_credit_amount) {
+      doc.text(`Nouveau avoir généré: ${sale.new_credit_amount.toFixed(0)} FCFA`, leftMargin, cursorY);
+      cursorY += 6;
+    }
+    doc.text(`Rendu: ${sale.amount_returned.toFixed(0)} FCFA`, leftMargin, cursorY);
+    cursorY += 6;
+    if (sale.deferred || sale.status === 'deferred') {
+      doc.text('PAIEMENT DIFFERE - Reste du a regler', leftMargin, cursorY);
+      cursorY += 6;
+    }
+    doc.text('Merci de votre visite !', leftMargin, cursorY + 12);
 
     window.open(doc.output('bloburl'), '_blank');
   };
@@ -495,6 +559,32 @@ const SalesPage: React.FC = () => {
             <Input placeholder="ID Client (optionnel)" value={clientId} onChange={e => setClientId(e.target.value)} />
             <Input type="number" placeholder="Somme reçue" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} />
 
+            <div className="flex items-center gap-2">
+              <Checkbox id="deferred" checked={deferredPayment} onCheckedChange={v => setDeferredPayment(v === true)} />
+              <label htmlFor="deferred" className="text-sm font-medium cursor-pointer">Paiement différé</label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox id="gen-avoir" checked={generateCreditNote} onCheckedChange={v => { setGenerateCreditNote(v === true); if (v !== true) setNewCreditNoteAmount(''); }} />
+              <label htmlFor="gen-avoir" className="text-sm font-medium cursor-pointer">Générer un Avoir</label>
+            </div>
+
+            {generateCreditNote && (
+              <Input
+                type="number"
+                placeholder="Montant du nouveau avoir"
+                value={newCreditNoteAmount}
+                onChange={e => setNewCreditNoteAmount(e.target.value)}
+              />
+            )}
+
+            {deferredPayment && (
+              <div className="flex justify-between text-sm font-medium">
+                <span>Reste à payer (différé)</span>
+                <span className="text-destructive">{formatCurrency(Math.max(0, amountDue - (parseFloat(amountReceived) || 0)))}</span>
+              </div>
+            )}
+
             {parseFloat(amountReceived) > 0 && (
               <div className="flex justify-between text-sm font-medium">
                 <span>Monnaie à rendre</span>
@@ -502,7 +592,10 @@ const SalesPage: React.FC = () => {
               </div>
             )}
 
-            <Button className="w-full" onClick={validateSale}>Valider la vente</Button>
+            <Button className="w-full" onClick={validateSale}>
+              {deferredPayment ? 'Enregistrer la vente (différé)' : 'Valider la vente'}
+            </Button>
+
 
             {lastSale && (
               <Button variant="outline" className="w-full" onClick={printReceipt}>
@@ -538,7 +631,14 @@ const SalesPage: React.FC = () => {
           <p>────────────────────────</p>
           <p className="flex justify-between font-bold"><span>TOTAL TTC</span><span>{formatCurrency(lastSale.total_ttc)}</span></p>
           <p className="flex justify-between"><span>Reçu</span><span>{formatCurrency(lastSale.amount_received)}</span></p>
+          {lastSale.credit_note_amount > 0 && (
+            <p className="flex justify-between"><span>Avoir utilisé</span><span>-{formatCurrency(lastSale.credit_note_amount)}</span></p>
+          )}
+          {lastSale.new_credit_amount > 0 && (
+            <p className="flex justify-between"><span>Nouveau avoir</span><span>{formatCurrency(lastSale.new_credit_amount)}</span></p>
+          )}
           <p className="flex justify-between"><span>Rendu</span><span>{formatCurrency(lastSale.amount_returned)}</span></p>
+          {lastSale.status === 'deferred' && <p className="font-bold">PAIEMENT DIFFÉRÉ</p>}
           <p className="text-center mt-4">Merci de votre visite !</p>
         </div>
       )}
