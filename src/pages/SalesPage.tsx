@@ -372,8 +372,18 @@ const SalesPage: React.FC = () => {
       cursorY += 6;
     }
     doc.text(`Reçu: ${sale.amount_received.toFixed(0)} FCFA`, leftMargin, cursorY);
-    doc.text(`Rendu: ${sale.amount_returned.toFixed(0)} FCFA`, leftMargin, cursorY + 6);
-    doc.text('Merci de votre visite !', leftMargin, cursorY + 18);
+    cursorY += 6;
+    if (sale.new_credit_amount) {
+      doc.text(`Nouveau avoir généré: ${sale.new_credit_amount.toFixed(0)} FCFA`, leftMargin, cursorY);
+      cursorY += 6;
+    }
+    doc.text(`Rendu: ${sale.amount_returned.toFixed(0)} FCFA`, leftMargin, cursorY);
+    cursorY += 6;
+    if (sale.deferred || sale.status === 'deferred') {
+      doc.text('PAIEMENT DIFFERE - Reste du a regler', leftMargin, cursorY);
+      cursorY += 6;
+    }
+    doc.text('Merci de votre visite !', leftMargin, cursorY + 12);
 
     window.open(doc.output('bloburl'), '_blank');
   };
