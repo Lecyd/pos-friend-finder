@@ -30,6 +30,9 @@ const SalesPage: React.FC = () => {
   const [amountReceived, setAmountReceived] = useState('');
   const [lastSale, setLastSale] = useState<any>(null);
   const [selectedCreditNoteId, setSelectedCreditNoteId] = useState<string>('');
+  const [deferredPayment, setDeferredPayment] = useState(false);
+  const [generateCreditNote, setGenerateCreditNote] = useState(false);
+  const [newCreditNoteAmount, setNewCreditNoteAmount] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
