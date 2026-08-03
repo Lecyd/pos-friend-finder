@@ -115,6 +115,9 @@ const SalesPage: React.FC = () => {
     setAmountReceived('');
     setClientId('');
     setSelectedCreditNoteId('');
+    setDeferredPayment(false);
+    setGenerateCreditNote(false);
+    setNewCreditNoteAmount('');
     toast({ title: 'Panier vidé' });
   };
 
@@ -127,12 +130,15 @@ const SalesPage: React.FC = () => {
     return { totalHT, totalTTC };
   }, [cart]);
 
+  const newCreditAmount = generateCreditNote ? (parseFloat(newCreditNoteAmount) || 0) : 0;
+
   const amountDue = Math.max(0, cartTotals.totalTTC - creditNoteAmount);
 
+  // Monnaie à rendre = Somme reçue - Total TTC + Avoir utilisé - Nouveau avoir généré
   const amountReturned = useMemo(() => {
     const received = parseFloat(amountReceived) || 0;
-    return Math.max(0, received - amountDue);
-  }, [amountReceived, amountDue]);
+    return Math.max(0, received - cartTotals.totalTTC + creditNoteAmount - newCreditAmount);
+  }, [amountReceived, cartTotals.totalTTC, creditNoteAmount, newCreditAmount]);
 
   const validateSale = async () => {
     if (cart.length === 0) {
@@ -140,10 +146,19 @@ const SalesPage: React.FC = () => {
       return;
     }
     const received = parseFloat(amountReceived) || 0;
-    if (received < amountDue) {
+    if (!deferredPayment && received < amountDue) {
       toast({ title: 'Erreur', description: 'La somme reçue est insuffisante.', variant: 'destructive' });
       return;
     }
+    if (generateCreditNote && newCreditAmount <= 0) {
+      toast({ title: 'Erreur', description: 'Saisissez le montant du nouveau avoir.', variant: 'destructive' });
+      return;
+    }
+    if (generateCreditNote && newCreditAmount > received - amountDue) {
+      toast({ title: 'Erreur', description: 'Le nouveau avoir dépasse le surplus encaissé.', variant: 'destructive' });
+      return;
+    }
+
 
     const invoiceNumber = `FAC-${Date.now().toString(36).toUpperCase()}`;
     const creditNoteId = selectedCreditNoteId && selectedCreditNoteId !== 'none' ? selectedCreditNoteId : null;
