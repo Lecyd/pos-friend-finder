@@ -61,7 +61,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ currentUrl, onUpload, folder 
       {currentUrl && (
         <img src={currentUrl} alt="Preview" className="h-20 w-20 rounded object-cover mb-2" />
       )}
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleFileChange} />
       <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
         {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
         {uploading ? 'Upload...' : 'Choisir une image'}
