@@ -204,10 +204,10 @@ const SalesPage: React.FC = () => {
     }
 
     if (creditNoteId) {
-      const { error: cnError } = await supabase
-        .from('credit_notes')
-        .update({ used: true, used_in_sale_id: sale.id })
-        .eq('id', creditNoteId);
+      const { error: cnError } = await supabase.rpc('mark_credit_note_used', {
+        _credit_note_id: creditNoteId,
+        _sale_id: sale.id,
+      });
       if (cnError) {
         toast({ title: 'Attention', description: "L'avoir n'a pas pu être marqué comme utilisé.", variant: 'destructive' });
       } else {
