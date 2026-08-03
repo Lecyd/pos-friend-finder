@@ -631,7 +631,14 @@ const SalesPage: React.FC = () => {
           <p>────────────────────────</p>
           <p className="flex justify-between font-bold"><span>TOTAL TTC</span><span>{formatCurrency(lastSale.total_ttc)}</span></p>
           <p className="flex justify-between"><span>Reçu</span><span>{formatCurrency(lastSale.amount_received)}</span></p>
+          {lastSale.credit_note_amount > 0 && (
+            <p className="flex justify-between"><span>Avoir utilisé</span><span>-{formatCurrency(lastSale.credit_note_amount)}</span></p>
+          )}
+          {lastSale.new_credit_amount > 0 && (
+            <p className="flex justify-between"><span>Nouveau avoir</span><span>{formatCurrency(lastSale.new_credit_amount)}</span></p>
+          )}
           <p className="flex justify-between"><span>Rendu</span><span>{formatCurrency(lastSale.amount_returned)}</span></p>
+          {lastSale.status === 'deferred' && <p className="font-bold">PAIEMENT DIFFÉRÉ</p>}
           <p className="text-center mt-4">Merci de votre visite !</p>
         </div>
       )}
