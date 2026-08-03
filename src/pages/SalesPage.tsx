@@ -559,6 +559,32 @@ const SalesPage: React.FC = () => {
             <Input placeholder="ID Client (optionnel)" value={clientId} onChange={e => setClientId(e.target.value)} />
             <Input type="number" placeholder="Somme reçue" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} />
 
+            <div className="flex items-center gap-2">
+              <Checkbox id="deferred" checked={deferredPayment} onCheckedChange={v => setDeferredPayment(v === true)} />
+              <label htmlFor="deferred" className="text-sm font-medium cursor-pointer">Paiement différé</label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox id="gen-avoir" checked={generateCreditNote} onCheckedChange={v => { setGenerateCreditNote(v === true); if (v !== true) setNewCreditNoteAmount(''); }} />
+              <label htmlFor="gen-avoir" className="text-sm font-medium cursor-pointer">Générer un Avoir</label>
+            </div>
+
+            {generateCreditNote && (
+              <Input
+                type="number"
+                placeholder="Montant du nouveau avoir"
+                value={newCreditNoteAmount}
+                onChange={e => setNewCreditNoteAmount(e.target.value)}
+              />
+            )}
+
+            {deferredPayment && (
+              <div className="flex justify-between text-sm font-medium">
+                <span>Reste à payer (différé)</span>
+                <span className="text-destructive">{formatCurrency(Math.max(0, amountDue - (parseFloat(amountReceived) || 0)))}</span>
+              </div>
+            )}
+
             {parseFloat(amountReceived) > 0 && (
               <div className="flex justify-between text-sm font-medium">
                 <span>Monnaie à rendre</span>
@@ -566,7 +592,10 @@ const SalesPage: React.FC = () => {
               </div>
             )}
 
-            <Button className="w-full" onClick={validateSale}>Valider la vente</Button>
+            <Button className="w-full" onClick={validateSale}>
+              {deferredPayment ? 'Enregistrer la vente (différé)' : 'Valider la vente'}
+            </Button>
+
 
             {lastSale && (
               <Button variant="outline" className="w-full" onClick={printReceipt}>
