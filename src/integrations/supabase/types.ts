@@ -598,6 +598,10 @@ export type Database = {
           name: string
         }[]
       }
+      mark_credit_note_used: {
+        Args: { _credit_note_id: string; _sale_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "caissiere" | "manager" | "admin"
