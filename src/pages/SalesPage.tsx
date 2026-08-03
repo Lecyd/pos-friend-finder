@@ -250,14 +250,48 @@ const SalesPage: React.FC = () => {
     }
 
 
-    const saleData = { ...sale, lines, credit_note_amount: creditNoteAmount };
+    // Generate a new credit note if requested
+    let createdCreditNote: { id: string; amount: number } | null = null;
+    if (generateCreditNote && newCreditAmount > 0) {
+      const { data: cn, error: cnErr } = await supabase
+        .from('credit_notes')
+        .insert({
+          amount: newCreditAmount,
+          client_id: clientId || null,
+          created_by: user!.id,
+        })
+        .select('id, amount, date')
+        .single();
+      if (cnErr || !cn) {
+        toast({ title: 'Erreur', description: 'Le nouveau ticket avoir n\'a pas pu être créé.', variant: 'destructive' });
+      } else {
+        createdCreditNote = { id: cn.id, amount: Number(cn.amount) };
+        setCreditNotes(prev => [{ id: cn.id, amount: Number(cn.amount), date: cn.date }, ...prev]);
+        toast({ title: 'Nouveau Ticket Avoir créé', description: `${newCreditAmount.toFixed(0)} FCFA disponible.` });
+      }
+    }
+
+    const saleData = {
+      ...sale,
+      lines,
+      credit_note_amount: creditNoteAmount,
+      new_credit_amount: createdCreditNote?.amount ?? 0,
+      deferred: deferredPayment,
+    };
     setLastSale(saleData);
     setCart([]);
     setAmountReceived('');
     setClientId('');
     setSelectedCreditNoteId('');
     setSelectedServerId('');
-    toast({ title: 'Vente validée !', description: `Facture ${invoiceNumber} créée.` });
+    setDeferredPayment(false);
+    setGenerateCreditNote(false);
+    setNewCreditNoteAmount('');
+    toast({
+      title: deferredPayment ? 'Vente enregistrée (paiement différé)' : 'Vente validée !',
+      description: `Facture ${invoiceNumber} créée.`,
+    });
+
 
     // Show stock alerts
     if (stockAlerts.length > 0) {
