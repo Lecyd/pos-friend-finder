@@ -145,6 +145,23 @@ const SalesPage: React.FC = () => {
     const creditNoteId = selectedCreditNoteId && selectedCreditNoteId !== 'none' ? selectedCreditNoteId : null;
     const server = servers.find(s => s.id === selectedServerId);
 
+    // Reserve the credit note atomically BEFORE creating the sale.
+    if (creditNoteId) {
+      const { error: cnError } = await supabase.rpc('mark_credit_note_used', {
+        _credit_note_id: creditNoteId,
+      });
+      if (cnError) {
+        setCreditNotes(prev => prev.filter(cn => cn.id !== creditNoteId));
+        setSelectedCreditNoteId('');
+        toast({
+          title: 'Ticket Avoir invalide',
+          description: 'Cet avoir a déjà été utilisé. La vente a été annulée.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const { data: sale, error: saleError } = await supabase
       .from('sales')
       .insert({
@@ -204,17 +221,14 @@ const SalesPage: React.FC = () => {
     }
 
     if (creditNoteId) {
-      const { error: cnError } = await supabase.rpc('mark_credit_note_used', {
+      await supabase.rpc('attach_credit_note_to_sale', {
         _credit_note_id: creditNoteId,
         _sale_id: sale.id,
       });
-      if (cnError) {
-        toast({ title: 'Attention', description: "L'avoir n'a pas pu être marqué comme utilisé.", variant: 'destructive' });
-      } else {
-        toast({ title: 'Ticket Avoir utilisé', description: 'Son statut est passé de « Disponible » à « Utilisé ».' });
-      }
+      toast({ title: 'Ticket Avoir utilisé', description: 'Son statut est passé de « Disponible » à « Utilisé ».' });
       setCreditNotes(prev => prev.filter(cn => cn.id !== creditNoteId));
     }
+
 
     const saleData = { ...sale, lines, credit_note_amount: creditNoteAmount };
     setLastSale(saleData);
