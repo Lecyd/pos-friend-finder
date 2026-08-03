@@ -56,13 +56,13 @@ const SalesPage: React.FC = () => {
       const [prodRes, catRes, cnRes, settingsRes, empRes] = await Promise.all([
         supabase.from('products').select('*').eq('active', true),
         supabase.from('categories').select('*'),
-        supabase.from('credit_notes').select('*').eq('used', false),
+        supabase.rpc('list_available_credit_notes'),
         supabase.from('site_settings').select('*').limit(1).single(),
         supabase.rpc('list_active_employees'),
       ]);
       if (prodRes.data) setProducts(prodRes.data);
       if (catRes.data) setCategories(catRes.data);
-      if (cnRes.data) setCreditNotes(cnRes.data);
+      if (cnRes.data) setCreditNotes(cnRes.data as CreditNote[]);
       if (settingsRes.data) setSiteSettings(settingsRes.data);
       if (empRes.data) setServers(empRes.data as { id: string; nom: string; prenoms: string }[]);
     };
