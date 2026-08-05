@@ -557,7 +557,7 @@ const SalesPage: React.FC = () => {
             )}
 
             <Input placeholder="ID Client (optionnel)" value={clientId} onChange={e => setClientId(e.target.value)} />
-            <Input type="number" placeholder="Somme reçue" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} />
+            <Input type="number" placeholder={deferredPayment ? 'Somme reçue (optionnelle)' : 'Somme reçue'} value={amountReceived} onChange={e => setAmountReceived(e.target.value)} />
 
             <div className="flex items-center gap-2">
               <Checkbox id="deferred" checked={deferredPayment} onCheckedChange={v => setDeferredPayment(v === true)} />
