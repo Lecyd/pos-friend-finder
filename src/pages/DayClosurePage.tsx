@@ -108,6 +108,7 @@ const DayClosurePage: React.FC = () => {
       <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
         <CalendarCheck className="h-5 w-5" /> Clôture de Journée
       </h2>
+      <p className="text-xs text-muted-foreground mb-4">Journée en cours : {formatBusinessDayLabel()}</p>
       <Card className="border-border/50 mb-4">
         <CardContent className="p-0">
           <Table>
