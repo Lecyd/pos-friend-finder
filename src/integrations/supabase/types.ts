@@ -614,6 +614,15 @@ export type Database = {
         Args: { _credit_note_id: string; _sale_id?: string }
         Returns: undefined
       }
+      settle_deferred_sale: {
+        Args: {
+          _amount_received: number
+          _amount_returned?: number
+          _credit_note_id?: string
+          _sale_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "caissiere" | "manager" | "admin"
