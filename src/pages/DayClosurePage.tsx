@@ -11,6 +11,11 @@ import autoTable from 'jspdf-autotable';
 import type { Tables } from '@/integrations/supabase/types';
 import { businessDayRange, currentBusinessDate, formatBusinessDayLabel } from '@/lib/business-day';
 
+const bizDayKey = () => {
+  const d = currentBusinessDate();
+  return `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, '0')}-${`${d.getDate()}`.padStart(2, '0')}`;
+};
+
 const DayClosurePage: React.FC = () => {
   const { user } = useAuth();
   const [todaySales, setTodaySales] = useState<Tables<'sales'>[]>([]);
@@ -37,12 +42,16 @@ const DayClosurePage: React.FC = () => {
 
   const generatePDF = () => {
     const doc = new jsPDF();
-    const today = new Date().toLocaleDateString('fr-FR');
+    const bizDay = currentBusinessDate();
+    const today = bizDay.toLocaleDateString('fr-FR');
 
     doc.setFontSize(18);
     doc.text(siteSettings?.restaurant_name || 'Restaurant', 105, 20, { align: 'center' });
     doc.setFontSize(12);
     doc.text(`Feuille de journée — ${today}`, 105, 30, { align: 'center' });
+    doc.setFontSize(9);
+    doc.text(formatBusinessDayLabel(bizDay), 105, 37, { align: 'center' });
+    doc.setFontSize(12);
     doc.text(`Caissier(ère): ${user?.name || ''}`, 14, 45);
 
     autoTable(doc, {
@@ -57,12 +66,12 @@ const DayClosurePage: React.FC = () => {
       foot: [['', '', 'TOTAL GÉNÉRAL', formatCurrency(totalGeneral)]],
     });
 
-    doc.save(`cloture-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`cloture-${bizDayKey()}.pdf`);
   };
 
   const handleClose = async () => {
     const { error } = await supabase.from('day_closures').insert({
-      date: new Date().toISOString().split('T')[0],
+      date: bizDayKey(),
       total_general: totalGeneral,
       user_id: user!.id,
     });
