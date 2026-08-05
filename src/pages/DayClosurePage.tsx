@@ -9,6 +9,7 @@ import { CalendarCheck, FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Tables } from '@/integrations/supabase/types';
+import { businessDayRange, currentBusinessDate, formatBusinessDayLabel } from '@/lib/business-day';
 
 const DayClosurePage: React.FC = () => {
   const { user } = useAuth();
