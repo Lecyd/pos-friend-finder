@@ -16,9 +16,13 @@ const DayClosurePage: React.FC = () => {
   const [siteSettings, setSiteSettings] = useState<Tables<'site_settings'> | null>(null);
 
   const fetchData = async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const { start, end } = businessDayRange();
     const [salesRes, settingsRes] = await Promise.all([
-      supabase.from('sales').select('*').gte('date', today).eq('status', 'completed').order('date', { ascending: true }),
+      supabase.from('sales').select('*')
+        .gte('date', start.toISOString())
+        .lt('date', end.toISOString())
+        .eq('status', 'completed')
+        .order('date', { ascending: true }),
       supabase.from('site_settings').select('*').limit(1).single(),
     ]);
     if (salesRes.data) setTodaySales(salesRes.data);
