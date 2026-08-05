@@ -288,7 +288,7 @@ const SalesPage: React.FC = () => {
     setGenerateCreditNote(false);
     setNewCreditNoteAmount('');
     toast({
-      title: deferredPayment ? 'Vente enregistrée (paiement différé)' : 'Vente validée !',
+      title: deferredPayment ? 'Facture en attente enregistrée' : 'Vente validée !',
       description: `Facture ${invoiceNumber} créée.`,
     });
 
