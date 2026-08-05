@@ -7,7 +7,7 @@ import {
   ShoppingCart, List, Package, Receipt, CalendarCheck,
   XCircle, CheckSquare, BarChart3, Settings, Users,
   Tag, UtensilsCrossed, LogOut, CreditCard, UserCircle, DollarSign,
-  Users2, Briefcase, FileText, Truck, Tags
+  Users2, Briefcase, FileText, Truck, Tags, Clock
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -26,6 +26,7 @@ const navItems: NavItem[] = [
   { label: 'Saisie Stock', path: '/dashboard/stock-entry', icon: <Package className="h-5 w-5" />, roles: ['caissiere'] },
   { label: 'Dépenses', path: '/dashboard/expenses', icon: <Receipt className="h-5 w-5" />, roles: ['caissiere', 'manager'] },
   { label: 'Ticket Avoir', path: '/dashboard/credit-notes', icon: <CreditCard className="h-5 w-5" />, roles: ['caissiere'] },
+  { label: 'Factures en attente', path: '/dashboard/pending-invoices', icon: <Clock className="h-5 w-5" />, roles: ['caissiere'] },
   { label: 'Clôture Journée', path: '/dashboard/day-closure', icon: <CalendarCheck className="h-5 w-5" />, roles: ['caissiere'] },
   { label: 'Annuler Ventes', path: '/dashboard/cancel-sales', icon: <XCircle className="h-5 w-5" />, roles: ['manager'] },
   { label: 'Valider Stocks', path: '/dashboard/validate-stock', icon: <CheckSquare className="h-5 w-5" />, roles: ['manager'] },

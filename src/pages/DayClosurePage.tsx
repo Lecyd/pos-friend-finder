@@ -9,6 +9,12 @@ import { CalendarCheck, FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Tables } from '@/integrations/supabase/types';
+import { businessDayRange, currentBusinessDate, formatBusinessDayLabel } from '@/lib/business-day';
+
+const bizDayKey = () => {
+  const d = currentBusinessDate();
+  return `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, '0')}-${`${d.getDate()}`.padStart(2, '0')}`;
+};
 
 const DayClosurePage: React.FC = () => {
   const { user } = useAuth();
@@ -16,9 +22,13 @@ const DayClosurePage: React.FC = () => {
   const [siteSettings, setSiteSettings] = useState<Tables<'site_settings'> | null>(null);
 
   const fetchData = async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const { start, end } = businessDayRange();
     const [salesRes, settingsRes] = await Promise.all([
-      supabase.from('sales').select('*').gte('date', today).eq('status', 'completed').order('date', { ascending: true }),
+      supabase.from('sales').select('*')
+        .gte('date', start.toISOString())
+        .lt('date', end.toISOString())
+        .eq('status', 'completed')
+        .order('date', { ascending: true }),
       supabase.from('site_settings').select('*').limit(1).single(),
     ]);
     if (salesRes.data) setTodaySales(salesRes.data);
@@ -32,12 +42,16 @@ const DayClosurePage: React.FC = () => {
 
   const generatePDF = () => {
     const doc = new jsPDF();
-    const today = new Date().toLocaleDateString('fr-FR');
+    const bizDay = currentBusinessDate();
+    const today = bizDay.toLocaleDateString('fr-FR');
 
     doc.setFontSize(18);
     doc.text(siteSettings?.restaurant_name || 'Restaurant', 105, 20, { align: 'center' });
     doc.setFontSize(12);
     doc.text(`Feuille de journée — ${today}`, 105, 30, { align: 'center' });
+    doc.setFontSize(9);
+    doc.text(formatBusinessDayLabel(bizDay), 105, 37, { align: 'center' });
+    doc.setFontSize(12);
     doc.text(`Caissier(ère): ${user?.name || ''}`, 14, 45);
 
     autoTable(doc, {
@@ -52,12 +66,12 @@ const DayClosurePage: React.FC = () => {
       foot: [['', '', 'TOTAL GÉNÉRAL', formatCurrency(totalGeneral)]],
     });
 
-    doc.save(`cloture-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`cloture-${bizDayKey()}.pdf`);
   };
 
   const handleClose = async () => {
     const { error } = await supabase.from('day_closures').insert({
-      date: new Date().toISOString().split('T')[0],
+      date: bizDayKey(),
       total_general: totalGeneral,
       user_id: user!.id,
     });
@@ -94,6 +108,7 @@ const DayClosurePage: React.FC = () => {
       <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
         <CalendarCheck className="h-5 w-5" /> Clôture de Journée
       </h2>
+      <p className="text-xs text-muted-foreground mb-4">Journée en cours : {formatBusinessDayLabel()}</p>
       <Card className="border-border/50 mb-4">
         <CardContent className="p-0">
           <Table>

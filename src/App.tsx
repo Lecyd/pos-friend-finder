@@ -14,6 +14,7 @@ import StockEntryPage from "@/pages/StockEntryPage";
 import ExpensesPage from "@/pages/ExpensesPage";
 import CreditNotesPage from "@/pages/CreditNotesPage";
 import DayClosurePage from "@/pages/DayClosurePage";
+import PendingInvoicesPage from "@/pages/PendingInvoicesPage";
 import CancelSalesPage from "@/pages/CancelSalesPage";
 import ValidateStockPage from "@/pages/ValidateStockPage";
 import StatsPage from "@/pages/StatsPage";
@@ -58,6 +59,8 @@ const App = () => (
               <Route path="expenses" element={<ExpensesPage />} />
               <Route path="credit-notes" element={<CreditNotesPage />} />
               <Route path="day-closure" element={<DayClosurePage />} />
+              <Route path="pending-invoices" element={<PendingInvoicesPage />} />
+
               <Route path="cancel-sales" element={<CancelSalesPage />} />
               <Route path="validate-stock" element={<ValidateStockPage />} />
               <Route path="stats" element={<StatsPage />} />

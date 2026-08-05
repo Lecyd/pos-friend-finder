@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { List, Eye } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
+import { businessDayRange, businessDayKey, currentBusinessDate } from '@/lib/business-day';
 
 type SaleWithCredit = Tables<'sales'> & { credit_amount?: number };
 
@@ -28,13 +29,12 @@ const SalesListPage: React.FC = () => {
 
   useEffect(() => {
     const fetchSales = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const tomorrow = new Date(new Date(today).getTime() + 86400000).toISOString().split('T')[0];
-      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+      const { start, end } = businessDayRange();
+      const weekStart = businessDayRange(new Date(currentBusinessDate().getTime() - 6 * 86400000)).start;
 
       const [dayRes, weekRes] = await Promise.all([
-        supabase.from('sales').select('*').gte('date', today).lt('date', tomorrow).order('date', { ascending: false }),
-        supabase.from('sales').select('*').gte('date', weekAgo).order('date', { ascending: false }),
+        supabase.from('sales').select('*').gte('date', start.toISOString()).lt('date', end.toISOString()).order('date', { ascending: false }),
+        supabase.from('sales').select('*').gte('date', weekStart.toISOString()).order('date', { ascending: false }),
       ]);
 
       // Collect all credit_note_ids to fetch amounts
@@ -61,7 +61,7 @@ const SalesListPage: React.FC = () => {
         const enrichedWeek = weekRes.data.map(enrichSale);
         const grouped: Record<string, SaleWithCredit[]> = {};
         enrichedWeek.forEach(s => {
-          const day = new Date(s.date).toISOString().split('T')[0];
+          const day = businessDayKey(s.date);
           if (!grouped[day]) grouped[day] = [];
           grouped[day].push(s);
         });
@@ -143,8 +143,8 @@ const SalesListPage: React.FC = () => {
                       <TableCell className="text-right">{formatCurrency(sale.amount_received)}</TableCell>
                       <TableCell className="text-right font-bold">{formatCurrency(sale.total_ttc)}</TableCell>
                       <TableCell>
-                        <Badge variant={sale.status === 'completed' ? 'default' : 'destructive'}>
-                          {sale.status === 'completed' ? 'Complétée' : 'Annulée'}
+                        <Badge variant={sale.status === 'completed' ? 'default' : sale.status === 'deferred' ? 'secondary' : 'destructive'}>
+                          {sale.status === 'completed' ? 'Complétée' : sale.status === 'deferred' ? 'En attente' : 'Annulée'}
                         </Badge>
                       </TableCell>
                       <TableCell>
