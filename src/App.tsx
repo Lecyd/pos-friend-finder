@@ -14,6 +14,7 @@ import StockEntryPage from "@/pages/StockEntryPage";
 import ExpensesPage from "@/pages/ExpensesPage";
 import CreditNotesPage from "@/pages/CreditNotesPage";
 import DayClosurePage from "@/pages/DayClosurePage";
+import PendingInvoicesPage from "@/pages/PendingInvoicesPage";
 import CancelSalesPage from "@/pages/CancelSalesPage";
 import ValidateStockPage from "@/pages/ValidateStockPage";
 import StatsPage from "@/pages/StatsPage";
