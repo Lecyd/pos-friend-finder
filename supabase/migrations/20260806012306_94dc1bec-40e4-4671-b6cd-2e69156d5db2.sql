@@ -1,0 +1,1 @@
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS credit_note_issued_amount numeric NOT NULL DEFAULT 0;
