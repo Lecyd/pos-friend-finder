@@ -191,6 +191,7 @@ const SalesPage: React.FC = () => {
         amount_received: received,
         amount_returned: amountReturned,
         credit_note_id: creditNoteId,
+        credit_note_issued_amount: newCreditAmount,
         status: deferredPayment ? 'deferred' : 'completed',
         server_employee_id: server?.id ?? null,
         server_name: server ? `${server.nom} ${server.prenoms}` : null,
