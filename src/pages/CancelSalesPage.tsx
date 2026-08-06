@@ -66,17 +66,18 @@ const CancelSalesPage: React.FC = () => {
                   <TableCell>{new Date(sale.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(sale.total_ttc)}</TableCell>
                   <TableCell>
-                    <Badge variant={sale.status === 'completed' ? 'default' : 'destructive'}>
-                      {sale.status === 'completed' ? 'Complétée' : 'Annulée'}
+                    <Badge variant={sale.status === 'completed' ? 'default' : sale.status === 'deferred' ? 'secondary' : 'destructive'}>
+                      {sale.status === 'completed' ? 'Complétée' : sale.status === 'deferred' ? 'En attente' : 'Annulée'}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {sale.status === 'completed' && (
+                    {(sale.status === 'completed' || sale.status === 'deferred') && (
                       <Button variant="destructive" size="sm" onClick={() => handleCancel(sale.id)}>
                         Annuler
                       </Button>
                     )}
                   </TableCell>
+
                 </TableRow>
               ))}
             </TableBody>

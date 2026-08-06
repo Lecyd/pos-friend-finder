@@ -273,6 +273,7 @@ const SalesListPage: React.FC = () => {
                 <TableHead>Avoir</TableHead>
                 <TableHead className="text-right">Encaissé</TableHead>
                 <TableHead className="text-right">Total TTC</TableHead>
+                <TableHead>Statut</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -290,6 +291,12 @@ const SalesListPage: React.FC = () => {
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(sale.amount_received)}</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(sale.total_ttc)}</TableCell>
+                  <TableCell>
+                    <Badge variant={sale.status === 'completed' ? 'default' : sale.status === 'deferred' ? 'secondary' : 'destructive'}>
+                      {sale.status === 'completed' ? 'Complétée' : sale.status === 'deferred' ? 'En attente' : 'Annulée'}
+                    </Badge>
+                  </TableCell>
+
                 </TableRow>
               ))}
             </TableBody>
