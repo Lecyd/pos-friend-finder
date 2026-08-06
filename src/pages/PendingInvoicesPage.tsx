@@ -95,6 +95,7 @@ const PendingInvoicesPage: React.FC = () => {
       _amount_received: received,
       _amount_returned: amountReturned,
       _credit_note_id: creditNoteId,
+      _credit_note_issued_amount: newCreditAmount,
     });
 
     if (settleError) {
