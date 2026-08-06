@@ -16,7 +16,9 @@ interface DaySummary {
   date: string;
   totalTTC: number;
   totalEncaisse: number;
-  totalAvoir: number;
+  totalAvoirUtilise: number;
+  totalAvoirEmis: number;
+  totalMonnaie: number;
   sales: SaleWithCredit[];
 }
 
@@ -71,7 +73,9 @@ const SalesListPage: React.FC = () => {
             date,
             totalTTC: daySales.filter(s => s.status === 'completed').reduce((sum, s) => sum + s.total_ttc, 0),
             totalEncaisse: daySales.filter(s => s.status === 'completed').reduce((sum, s) => sum + s.amount_received, 0),
-            totalAvoir: daySales.filter(s => s.status === 'completed').reduce((sum, s) => sum + (s.credit_amount || 0), 0),
+            totalAvoirUtilise: daySales.filter(s => s.status === 'completed').reduce((sum, s) => sum + (s.credit_amount || 0), 0),
+            totalAvoirEmis: daySales.filter(s => s.status === 'completed').reduce((sum, s) => sum + (s.credit_note_issued_amount || 0), 0),
+            totalMonnaie: daySales.filter(s => s.status === 'completed').reduce((sum, s) => sum + s.amount_returned, 0),
             sales: daySales,
           }))
           .sort((a, b) => b.date.localeCompare(a.date));
@@ -94,6 +98,11 @@ const SalesListPage: React.FC = () => {
 
   const completedDaySales = sales.filter(s => s.status === 'completed');
 
+  const currencyCell = (amount: number) => {
+    if (amount > 0) return <span className="text-accent-foreground">{formatCurrency(amount)}</span>;
+    return <span className="text-muted-foreground">0</span>;
+  };
+
   return (
     <div>
       <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -115,9 +124,10 @@ const SalesListPage: React.FC = () => {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>N° Facture</TableHead>
-                    <TableHead>Heure</TableHead>
                     <TableHead>Client</TableHead>
-                    <TableHead>Avoir</TableHead>
+                    <TableHead className="text-right">Avoir utilisé</TableHead>
+                    <TableHead className="text-right">Avoir émis</TableHead>
+                    <TableHead className="text-right">Monnaie</TableHead>
                     <TableHead className="text-right">Encaissé</TableHead>
                     <TableHead className="text-right">Total TTC</TableHead>
                     <TableHead>Statut</TableHead>
@@ -126,20 +136,16 @@ const SalesListPage: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {sales.length === 0 && (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Aucune vente</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Aucune vente</TableCell></TableRow>
                   )}
                   {sales.map(sale => (
                     <TableRow key={sale.id}>
                       <TableCell>{formatDate(sale.date)}</TableCell>
                       <TableCell className="font-medium">{sale.invoice_number}</TableCell>
-                      <TableCell>{new Date(sale.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
                       <TableCell>{sale.client_id || '—'}</TableCell>
-                      <TableCell>
-                        {sale.credit_amount && sale.credit_amount > 0
-                          ? <span className="text-accent-foreground">{formatCurrency(sale.credit_amount)}</span>
-                          : <span className="text-muted-foreground">Avoir = 0</span>
-                        }
-                      </TableCell>
+                      <TableCell className="text-right">{currencyCell(sale.credit_amount || 0)}</TableCell>
+                      <TableCell className="text-right">{currencyCell(sale.credit_note_issued_amount || 0)}</TableCell>
+                      <TableCell className="text-right">{currencyCell(sale.amount_returned)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(sale.amount_received)}</TableCell>
                       <TableCell className="text-right font-bold">{formatCurrency(sale.total_ttc)}</TableCell>
                       <TableCell>
@@ -177,25 +183,22 @@ const SalesListPage: React.FC = () => {
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Total TTC</TableHead>
                     <TableHead className="text-right">Encaissé</TableHead>
-                    <TableHead className="text-right">Total Avoir</TableHead>
+                    <TableHead className="text-right">Avoir utilisé</TableHead>
+                    <TableHead className="text-right">Monnaie</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {weeklySummaries.length === 0 && (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Aucune vente</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Aucune vente</TableCell></TableRow>
                   )}
                   {weeklySummaries.map(summary => (
                     <TableRow key={summary.date}>
                       <TableCell className="font-medium">{formatDate(summary.date)}</TableCell>
                       <TableCell className="text-right font-bold">{formatCurrency(summary.totalTTC)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(summary.totalEncaisse)}</TableCell>
-                      <TableCell className="text-right">
-                        {summary.totalAvoir > 0
-                          ? <span className="text-accent-foreground">{formatCurrency(summary.totalAvoir)}</span>
-                          : <span className="text-muted-foreground">0</span>
-                        }
-                      </TableCell>
+                      <TableCell className="text-right">{currencyCell(summary.totalAvoirUtilise)}</TableCell>
+                      <TableCell className="text-right">{currencyCell(summary.totalMonnaie)}</TableCell>
                       <TableCell>
                         <Button variant="outline" size="sm" onClick={() => setWeekDetailDay(summary)}>
                           <Eye className="h-4 w-4 mr-1" /> Détails
@@ -247,10 +250,14 @@ const SalesListPage: React.FC = () => {
             <div className="border-t pt-3 space-y-1 text-sm">
               <div className="flex justify-between"><span>Total TTC</span><span className="font-bold">{formatCurrency(detailSale.total_ttc)}</span></div>
               <div className="flex justify-between"><span>Encaissé</span><span>{formatCurrency(detailSale.amount_received)}</span></div>
-              <div className="flex justify-between"><span>Rendu</span><span>{formatCurrency(detailSale.amount_returned)}</span></div>
+              <div className="flex justify-between"><span>Monnaie</span><span>{formatCurrency(detailSale.amount_returned)}</span></div>
               <div className="flex justify-between">
-                <span>Avoir</span>
+                <span>Avoir utilisé</span>
                 <span>{detailSale.credit_amount && detailSale.credit_amount > 0 ? formatCurrency(detailSale.credit_amount) : '0 FCFA'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Avoir émis</span>
+                <span>{detailSale.credit_note_issued_amount && detailSale.credit_note_issued_amount > 0 ? formatCurrency(detailSale.credit_note_issued_amount) : '0 FCFA'}</span>
               </div>
             </div>
           )}
@@ -268,9 +275,10 @@ const SalesListPage: React.FC = () => {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>N° Facture</TableHead>
-                <TableHead>Heure</TableHead>
                 <TableHead>Client</TableHead>
-                <TableHead>Avoir</TableHead>
+                <TableHead className="text-right">Avoir utilisé</TableHead>
+                <TableHead className="text-right">Avoir émis</TableHead>
+                <TableHead className="text-right">Monnaie</TableHead>
                 <TableHead className="text-right">Encaissé</TableHead>
                 <TableHead className="text-right">Total TTC</TableHead>
                 <TableHead>Statut</TableHead>
@@ -281,14 +289,10 @@ const SalesListPage: React.FC = () => {
                 <TableRow key={sale.id}>
                   <TableCell>{formatDate(sale.date)}</TableCell>
                   <TableCell className="font-medium">{sale.invoice_number}</TableCell>
-                  <TableCell>{new Date(sale.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
                   <TableCell>{sale.client_id || '—'}</TableCell>
-                  <TableCell>
-                    {sale.credit_amount && sale.credit_amount > 0
-                      ? <span className="text-accent-foreground">{formatCurrency(sale.credit_amount)}</span>
-                      : <span className="text-muted-foreground">0</span>
-                    }
-                  </TableCell>
+                  <TableCell className="text-right">{currencyCell(sale.credit_amount || 0)}</TableCell>
+                  <TableCell className="text-right">{currencyCell(sale.credit_note_issued_amount || 0)}</TableCell>
+                  <TableCell className="text-right">{currencyCell(sale.amount_returned)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(sale.amount_received)}</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(sale.total_ttc)}</TableCell>
                   <TableCell>
@@ -296,7 +300,6 @@ const SalesListPage: React.FC = () => {
                       {sale.status === 'completed' ? 'Complétée' : sale.status === 'deferred' ? 'En attente' : 'Annulée'}
                     </Badge>
                   </TableCell>
-
                 </TableRow>
               ))}
             </TableBody>
