@@ -184,13 +184,14 @@ const SalesListPage: React.FC = () => {
                     <TableHead className="text-right">Total TTC</TableHead>
                     <TableHead className="text-right">Encaissé</TableHead>
                     <TableHead className="text-right">Avoir utilisé</TableHead>
+                    <TableHead className="text-right">Avoir émis</TableHead>
                     <TableHead className="text-right">Monnaie</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {weeklySummaries.length === 0 && (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Aucune vente</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Aucune vente</TableCell></TableRow>
                   )}
                   {weeklySummaries.map(summary => (
                     <TableRow key={summary.date}>
@@ -198,6 +199,7 @@ const SalesListPage: React.FC = () => {
                       <TableCell className="text-right font-bold">{formatCurrency(summary.totalTTC)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(summary.totalEncaisse)}</TableCell>
                       <TableCell className="text-right">{currencyCell(summary.totalAvoirUtilise)}</TableCell>
+                      <TableCell className="text-right">{currencyCell(summary.totalAvoirEmis)}</TableCell>
                       <TableCell className="text-right">{currencyCell(summary.totalMonnaie)}</TableCell>
                       <TableCell>
                         <Button variant="outline" size="sm" onClick={() => setWeekDetailDay(summary)}>
