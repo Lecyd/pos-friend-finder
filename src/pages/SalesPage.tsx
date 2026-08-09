@@ -537,13 +537,13 @@ const SalesPage: React.FC = () => {
             <p className="font-bold text-lg">{siteSettings.restaurant_name}</p>
             <p>{siteSettings.address}</p>
             <p>Tél: {[siteSettings.phone, (siteSettings as any).phone2, (siteSettings as any).phone3].filter(Boolean).join(' / ')}</p>
-            <p>────────────────────────</p>
+            <div className="my-1 border-t border-dashed border-black" />
           </div>
           <p>Facture: {lastSale.invoice_number}</p>
           <p>Date: {new Date(lastSale.date).toLocaleString('fr-FR')}</p>
           {lastSale.client_id && <p>Client: {lastSale.client_id}</p>}
           {lastSale.server_name && <p>Serveur/Serveuse: {lastSale.server_name}</p>}
-          <p>────────────────────────</p>
+          <div className="my-1 border-t border-dashed border-black" />
           {lastSale.lines?.map((line: any, i: number) => (
             <div key={i}>
               <p>{line.product_name}</p>
@@ -553,7 +553,7 @@ const SalesPage: React.FC = () => {
               </p>
             </div>
           ))}
-          <p>────────────────────────</p>
+          <div className="my-1 border-t border-dashed border-black" />
           <p className="flex justify-between font-bold"><span>TOTAL TTC</span><span>{formatCurrency(lastSale.total_ttc)}</span></p>
           <p className="flex justify-between"><span>Reçu</span><span>{formatCurrency(lastSale.amount_received)}</span></p>
           {lastSale.credit_note_amount > 0 && (
