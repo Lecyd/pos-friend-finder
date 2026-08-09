@@ -7,7 +7,7 @@ import {
   ShoppingCart, List, Package, Receipt, CalendarCheck,
   XCircle, CheckSquare, BarChart3, Settings, Users,
   Tag, UtensilsCrossed, LogOut, CreditCard, UserCircle, DollarSign,
-  Users2, Briefcase, FileText, Truck, Tags, Clock
+  Users2, Briefcase, FileText, Truck, Tags, Clock, Printer
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -41,6 +41,7 @@ const navItems: NavItem[] = [
   { label: 'Bilan', path: '/dashboard/bilan', icon: <FileText className="h-5 w-5" />, roles: ['admin'] },
   { label: 'Fournisseurs', path: '/dashboard/suppliers', icon: <Truck className="h-5 w-5" />, roles: ['admin'] },
   { label: 'Types de dépense', path: '/dashboard/expense-types', icon: <Tags className="h-5 w-5" />, roles: ['admin'] },
+  { label: 'Imprimantes', path: '/dashboard/printers', icon: <Printer className="h-5 w-5" />, roles: ['admin'] },
   { label: 'Mon Profil', path: '/dashboard/profile', icon: <UserCircle className="h-5 w-5" />, roles: ['caissiere', 'manager', 'admin'] },
 ];
 

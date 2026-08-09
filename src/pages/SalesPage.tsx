@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, XCircle, PlayCircle, UserRound } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { buildSaleReceiptPdf } from '@/lib/receipt-pdf';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Product = Tables<'products'>;
@@ -310,82 +309,7 @@ const SalesPage: React.FC = () => {
   };
 
   const generatePdfInvoice = (sale: any, lines: any[]) => {
-    const doc = new jsPDF();
-    const leftMargin = 14;
-
-    // Header
-    let headerY = 20;
-    if (siteSettings) {
-      doc.setFontSize(16);
-      doc.text(siteSettings.restaurant_name, leftMargin, headerY);
-      doc.setFontSize(10);
-      headerY += 7;
-      doc.text(siteSettings.address, leftMargin, headerY);
-      const phones = [siteSettings.phone, (siteSettings as any).phone2, (siteSettings as any).phone3].filter(Boolean);
-      if (phones.length > 0) {
-        headerY += 6;
-        doc.text(`Tél: ${phones.join(' / ')}`, leftMargin, headerY);
-      }
-    }
-
-    let infoY = headerY + 12;
-    doc.setFontSize(12);
-    doc.text(`Facture: ${sale.invoice_number}`, leftMargin, infoY);
-    doc.setFontSize(10);
-    infoY += 7;
-    doc.text(`Date: ${new Date(sale.date).toLocaleString('fr-FR')}`, leftMargin, infoY);
-    if (sale.client_id) {
-      infoY += 6;
-      doc.text(`Client: ${sale.client_id}`, leftMargin, infoY);
-    }
-    if (sale.server_name) {
-      infoY += 6;
-      doc.text(`Serveur/Serveuse: ${sale.server_name}`, leftMargin, infoY);
-    }
-
-    const tableData = lines.map((line: any) => [
-      line.product_name,
-      line.quantity.toString(),
-      `${line.price_ttc.toFixed(0)} FCFA`,
-      `${line.total_ttc.toFixed(0)} FCFA`,
-    ]);
-
-    autoTable(doc, {
-      head: [['Produit', 'Qté', 'Prix Unit. TTC', 'Total TTC']],
-      body: tableData,
-      startY: infoY + 6,
-      styles: { halign: 'left', fontSize: 9 },
-      headStyles: { fillColor: [41, 128, 185] },
-    });
-
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(10);
-    doc.text(`Total HT: ${sale.total_ht.toFixed(0)} FCFA`, leftMargin, finalY);
-    doc.setFontSize(12);
-    doc.text(`Total TTC: ${sale.total_ttc.toFixed(0)} FCFA`, leftMargin, finalY + 8);
-    doc.setFontSize(10);
-    let cursorY = finalY + 16;
-    if (sale.credit_note_id && sale.credit_note_amount) {
-      doc.text(`Avoir utilisé: -${sale.credit_note_amount.toFixed(0)} FCFA`, leftMargin, cursorY);
-      cursorY += 6;
-      const netDue = Math.max(0, sale.total_ttc - sale.credit_note_amount);
-      doc.text(`Reste à payer: ${netDue.toFixed(0)} FCFA`, leftMargin, cursorY);
-      cursorY += 6;
-    }
-    doc.text(`Reçu: ${sale.amount_received.toFixed(0)} FCFA`, leftMargin, cursorY);
-    cursorY += 6;
-    if (sale.new_credit_amount) {
-      doc.text(`Nouveau avoir généré: ${sale.new_credit_amount.toFixed(0)} FCFA`, leftMargin, cursorY);
-      cursorY += 6;
-    }
-    doc.text(`Rendu: ${sale.amount_returned.toFixed(0)} FCFA`, leftMargin, cursorY);
-    cursorY += 6;
-    if (sale.deferred || sale.status === 'deferred') {
-      doc.text('PAIEMENT DIFFERE - Reste du a regler', leftMargin, cursorY);
-      cursorY += 6;
-    }
-    doc.text('Merci de votre visite !', leftMargin, cursorY + 12);
-
+    const doc = buildSaleReceiptPdf(sale, lines, siteSettings as any);
     window.open(doc.output('bloburl'), '_blank');
   };
 
@@ -613,13 +537,13 @@ const SalesPage: React.FC = () => {
             <p className="font-bold text-lg">{siteSettings.restaurant_name}</p>
             <p>{siteSettings.address}</p>
             <p>Tél: {[siteSettings.phone, (siteSettings as any).phone2, (siteSettings as any).phone3].filter(Boolean).join(' / ')}</p>
-            <p>────────────────────────</p>
+            <div className="my-1 border-t border-dashed border-black" />
           </div>
           <p>Facture: {lastSale.invoice_number}</p>
           <p>Date: {new Date(lastSale.date).toLocaleString('fr-FR')}</p>
           {lastSale.client_id && <p>Client: {lastSale.client_id}</p>}
           {lastSale.server_name && <p>Serveur/Serveuse: {lastSale.server_name}</p>}
-          <p>────────────────────────</p>
+          <div className="my-1 border-t border-dashed border-black" />
           {lastSale.lines?.map((line: any, i: number) => (
             <div key={i}>
               <p>{line.product_name}</p>
@@ -629,7 +553,7 @@ const SalesPage: React.FC = () => {
               </p>
             </div>
           ))}
-          <p>────────────────────────</p>
+          <div className="my-1 border-t border-dashed border-black" />
           <p className="flex justify-between font-bold"><span>TOTAL TTC</span><span>{formatCurrency(lastSale.total_ttc)}</span></p>
           <p className="flex justify-between"><span>Reçu</span><span>{formatCurrency(lastSale.amount_received)}</span></p>
           {lastSale.credit_note_amount > 0 && (

@@ -143,16 +143,16 @@ const CreditNotesPage: React.FC = () => {
             <p className="font-bold text-lg">{siteSettings.restaurant_name}</p>
             <p>{siteSettings.address}</p>
             <p>Tél: {siteSettings.phone}</p>
-            <p>────────────────────────</p>
+            <div className="my-1 border-t border-dashed border-black" />
             <p className="font-bold text-base mt-2">TICKET AVOIR</p>
-            <p>────────────────────────</p>
+            <div className="my-1 border-t border-dashed border-black" />
           </div>
           <p>N°: {lastCreatedNote.id.slice(0, 8).toUpperCase()}</p>
           <p>Date: {new Date(lastCreatedNote.date).toLocaleString('fr-FR')}</p>
           {lastCreatedNote.client_id && <p>Client: {lastCreatedNote.client_id}</p>}
-          <p>────────────────────────</p>
+          <div className="my-1 border-t border-dashed border-black" />
           <p className="text-center font-bold text-lg my-2">{formatCurrency(lastCreatedNote.amount)}</p>
-          <p>────────────────────────</p>
+          <div className="my-1 border-t border-dashed border-black" />
           <div className="flex justify-center my-4">
             <QRCodeSVG value={getQRData(lastCreatedNote)} size={120} />
           </div>
