@@ -7,7 +7,7 @@ import {
   ShoppingCart, List, Package, Receipt, CalendarCheck,
   XCircle, CheckSquare, BarChart3, Settings, Users,
   Tag, UtensilsCrossed, LogOut, CreditCard, UserCircle, DollarSign,
-  Users2, Briefcase, FileText, Truck, Tags, Clock
+  Users2, Briefcase, FileText, Truck, Tags, Clock, Printer
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
