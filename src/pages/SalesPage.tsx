@@ -10,7 +10,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, XCircle, PlayCircle, UserRound } from 'lucide-react';
 import { buildSaleReceiptPdf } from '@/lib/receipt-pdf';
-import autoTable from 'jspdf-autotable';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Product = Tables<'products'>;
