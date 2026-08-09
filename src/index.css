@@ -158,3 +158,50 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+/* ── Impression ticket thermique 58mm ───────────────────────────── */
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: 58mm auto;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-only,
+  .print-only * {
+    visibility: visible;
+  }
+
+  .print-only {
+    display: block;
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 58mm !important;
+    max-width: 58mm !important;
+    padding: 2mm !important;
+    margin: 0;
+    background: #fff;
+    color: #000;
+    font-family: monospace;
+    font-size: 9px;
+    line-height: 1.25;
+    overflow: visible;
+  }
+
+  .print-only p {
+    margin: 0;
+    word-break: break-word;
+  }
+
+  .print-only svg {
+    width: 30mm !important;
+    height: 30mm !important;
+  }
+}
